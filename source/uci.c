@@ -83,17 +83,20 @@ static void UCISetClock(int wtime, int btime, int winc, int binc,
 }
 
 /*
- *  UCIGo() handles the UCI "go" command for fixed-limit searches.  It parses
- *  "depth N" and "movetime T" (ms); anything else (bare go, infinite, clock
- *  limits) falls back to a default fixed depth so a bestmove is always
- *  produced.  Crafty's native search output is suppressed for the duration of
- *  the search (display_options/kibitz/post zeroed), and the engine's move is
- *  NOT played on the board (UCI is stateless).
+ *  UCIGo() handles the UCI "go" command.  It parses "depth N" and
+ *  "movetime T" (ms); clock parameters (wtime/btime/winc/binc/movestogo) are
+ *  mapped to Crafty's time-control globals by UCISetClock(); "infinite" runs
+ *  the search in pondering mode until a "stop" command is received.  A bare
+ *  "go" with none of these falls back to a default fixed depth so a bestmove
+ *  is always produced.  Crafty's native search output is suppressed for the
+ *  duration of the search (display_options/kibitz/post zeroed), and the
+ *  engine's move is NOT played on the board (UCI is stateless).
  */
 static void UCIGo(int nargs, char *args[]) {
   TREE *const tree = block[0];
   int i, best, saved_display_options, saved_kibitz, saved_post;
   int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, has_clock = 0;
+  int infinite = 0;
   unsigned saved_noise;
   char movestr[8];
 
@@ -116,9 +119,13 @@ static void UCIGo(int nargs, char *args[]) {
       binc = atoi(args[++i]);
     else if (!strcmp(args[i], "movestogo") && i + 1 < nargs)
       movestogo = atoi(args[++i]);
+    else if (!strcmp(args[i], "infinite"))
+      infinite = 1;
   }
   if (search_depth == 0 && search_time_limit == 0) {
-    if (has_clock)
+    if (infinite)
+      ;                         /* pondering=1 below makes the search run until stop */
+    else if (has_clock)
       UCISetClock(wtime, btime, winc, binc, movestogo);
     else
       search_depth = UCI_DEFAULT_DEPTH;
@@ -137,7 +144,7 @@ static void UCIGo(int nargs, char *args[]) {
 /*
  *  Set the pre-search state the same way main()'s game loop does, then search.
  */
-  pondering = 0;
+  pondering = (infinite) ? 1 : 0;
   thinking = 1;
   last_pv.pathd = 0;
   last_pv.pathl = 0;
@@ -145,6 +152,7 @@ static void UCIGo(int nargs, char *args[]) {
   tree->status[1] = tree->status[0];
   Iterate(game_wtm, think, 0);
   thinking = 0;
+  pondering = 0;
   display_options = saved_display_options;
   kibitz = saved_kibitz;
   post = saved_post;

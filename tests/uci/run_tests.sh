@@ -92,4 +92,9 @@ expect "go wtime/btime (sudden death) -> bestmove" 'uci\nposition startpos\ngo w
 expect "go with movestogo -> bestmove"             'uci\nposition startpos\ngo wtime 2000 btime 2000 movestogo 30\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 expect "clock search still streams info"           'uci\nposition startpos\ngo wtime 2000 btime 2000\nquit\n' '^info depth [0-9]+ score cp '
 
+# --- Phase 4 Task 2: stop and go infinite ---
+expect "stop interrupts go infinite -> bestmove"   'uci\nposition startpos\ngo infinite\nstop\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "stop interrupts a long search -> bestmove" 'uci\nposition startpos\ngo movetime 60000\nstop\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "isready during search -> readyok"          'uci\nposition startpos\ngo infinite\nisready\nstop\nquit\n' '^readyok'
+
 exit $fail
