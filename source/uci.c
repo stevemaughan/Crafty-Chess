@@ -42,6 +42,10 @@ void UCI(void) {
       continue;
     if (!strcmp(args[0], "uci"))
       UCISendId();
+    else if (!strcmp(args[0], "isready")) {
+      printf("readyok\n");
+      fflush(stdout);
+    }
     else if (!strcmp(args[0], "quit"))
       break;
     /* Unknown commands are ignored, per the UCI specification. */

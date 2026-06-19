@@ -27,4 +27,7 @@ expect "uci -> uciok"     'uci\nquit\n' '^uciok'
 expect "uci -> id name"   'uci\nquit\n' '^id name Crafty 25\.2'
 expect "uci -> id author" 'uci\nquit\n' '^id author Robert Hyatt'
 
+# --- Task 3: isready ---
+expect "isready -> readyok" 'uci\nisready\nquit\n' '^readyok'
+
 exit $fail
