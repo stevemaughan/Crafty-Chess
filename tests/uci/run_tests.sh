@@ -66,4 +66,7 @@ expect "position startpos moves -> legal reply" 'uci\nposition startpos moves e2
 # Stalemate (Black to move, no legal move, not in check) -> bestmove 0000.
 expect "position stalemate -> bestmove 0000" 'uci\nposition fen 7k/5Q2/6K1/8/8/8/8/8 b - - 0 1\ngo depth 2\nquit\n' '^bestmove 0000'
 
+# --- Task 3 (Phase 2): ucinewgame ---
+expect "ucinewgame then play works" 'uci\nucinewgame\nposition startpos\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+
 exit $fail

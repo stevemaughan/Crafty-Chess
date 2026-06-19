@@ -199,6 +199,11 @@ void UCI(void) {
       UCIPosition(nargs, args);
     else if (!strcmp(args[0], "go"))
       UCIGo(nargs, args);
+    else if (!strcmp(args[0], "ucinewgame")) {
+      InitializeHashTables(0);
+      InitializeChessBoard(block[0]);
+      move_number = 1;
+    }
     else if (!strcmp(args[0], "quit"))
       break;
     /* Unknown commands are ignored, per the UCI specification. */
