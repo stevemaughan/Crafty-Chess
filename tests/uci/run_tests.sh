@@ -19,6 +19,18 @@ expect() {
   fi
 }
 
+# reject <description> <transcript> <egrep-pattern> — assert the pattern is ABSENT
+reject() {
+  desc=$1; transcript=$2; pattern=$3
+  out=$(printf '%b' "$transcript" | "$ENGINE" 2>/dev/null)
+  if printf '%s\n' "$out" | grep -Eq "$pattern"; then
+    echo "FAIL: $desc -- unexpected /$pattern/"
+    fail=1
+  else
+    echo "PASS: $desc"
+  fi
+}
+
 # --- Task 1: smoke (engine builds and runs) ---
 expect "engine builds and runs" 'quit\n' 'Crafty v25\.2'
 
@@ -39,5 +51,11 @@ expect "option OwnBook"       'uci\nquit\n' '^option name OwnBook type check def
 expect "option BookFile"      'uci\nquit\n' '^option name BookFile type string'
 expect "option MultiPV"       'uci\nquit\n' '^option name MultiPV type spin default 1 min 1 max 256'
 expect "option Move Overhead" 'uci\nquit\n' '^option name Move Overhead type spin default 30 min 0 max 5000'
+
+# --- Task 1 (Phase 2): go / bestmove on the start position ---
+expect "go depth -> well-formed bestmove" 'uci\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8][nbrq]?$'
+expect "go movetime -> bestmove"          'uci\ngo movetime 200\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+reject "no native search header leaks"    'uci\ngo depth 6\nquit\n' 'variation'
+reject "no native PV ply line leaks"      'uci\ngo depth 6\nquit\n' '^\s+[0-9]+->'
 
 exit $fail
