@@ -50,6 +50,39 @@ static void UCIMove(int move, char *out) {
 }
 
 /*
+ *  UCISetClock() maps a UCI "go" clock (wtime/btime/winc/binc in ms, movestogo
+ *  a move count) onto Crafty's time-control globals (centiseconds, indexed
+ *  black=0/white=1).  game_wtm is the side to move (the engine's side).  With
+ *  movestogo it uses an N-moves-in-T model; otherwise sudden death + increment.
+ *  TimeSet() then computes the per-move time when Iterate() runs.
+ */
+static void UCISetClock(int wtime, int btime, int winc, int binc,
+    int movestogo) {
+  int mytime = (game_wtm ? wtime : btime) / 10;
+  int opptime = (game_wtm ? btime : wtime) / 10;
+  int myinc = (game_wtm ? winc : binc) / 10;
+
+  tc_time_remaining[game_wtm] = mytime;
+  tc_time_remaining[Flip(game_wtm)] = opptime;
+  tc_increment = myinc;
+  tc_safety_margin = 0;
+  if (movestogo > 0) {
+    tc_sudden_death = 0;
+    tc_moves = movestogo;
+    tc_time = mytime;
+    tc_secondary_moves = movestogo;
+    tc_secondary_time = mytime;
+    tc_moves_remaining[game_wtm] = movestogo;
+    tc_moves_remaining[Flip(game_wtm)] = movestogo;
+  } else {
+    tc_sudden_death = 1;
+    tc_moves = 1000;
+    tc_moves_remaining[white] = 1000;
+    tc_moves_remaining[black] = 1000;
+  }
+}
+
+/*
  *  UCIGo() handles the UCI "go" command for fixed-limit searches.  It parses
  *  "depth N" and "movetime T" (ms); anything else (bare go, infinite, clock
  *  limits) falls back to a default fixed depth so a bestmove is always
@@ -60,6 +93,7 @@ static void UCIMove(int move, char *out) {
 static void UCIGo(int nargs, char *args[]) {
   TREE *const tree = block[0];
   int i, best, saved_display_options, saved_kibitz, saved_post;
+  int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, has_clock = 0;
   unsigned saved_noise;
   char movestr[8];
 
@@ -70,9 +104,25 @@ static void UCIGo(int nargs, char *args[]) {
       search_depth = atoi(args[++i]);
     else if (!strcmp(args[i], "movetime") && i + 1 < nargs)
       search_time_limit = atoi(args[++i]) / 10;
+    else if (!strcmp(args[i], "wtime") && i + 1 < nargs) {
+      wtime = atoi(args[++i]);
+      has_clock = 1;
+    } else if (!strcmp(args[i], "btime") && i + 1 < nargs) {
+      btime = atoi(args[++i]);
+      has_clock = 1;
+    } else if (!strcmp(args[i], "winc") && i + 1 < nargs)
+      winc = atoi(args[++i]);
+    else if (!strcmp(args[i], "binc") && i + 1 < nargs)
+      binc = atoi(args[++i]);
+    else if (!strcmp(args[i], "movestogo") && i + 1 < nargs)
+      movestogo = atoi(args[++i]);
   }
-  if (!search_depth && !search_time_limit)
-    search_depth = UCI_DEFAULT_DEPTH;
+  if (search_depth == 0 && search_time_limit == 0) {
+    if (has_clock)
+      UCISetClock(wtime, btime, winc, binc, movestogo);
+    else
+      search_depth = UCI_DEFAULT_DEPTH;
+  }
 /*
  *  Suppress Crafty's native streaming search output while we search.
  */

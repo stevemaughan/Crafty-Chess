@@ -10,7 +10,7 @@ fail=0
 # expect <description> <transcript-with-\n-escapes> <egrep-pattern>
 expect() {
   desc=$1; transcript=$2; pattern=$3
-  out=$(printf '%b' "$transcript" | "$ENGINE" 2>/dev/null)
+  out=$(printf '%b' "$transcript" | timeout 30 "$ENGINE" 2>/dev/null)
   if printf '%s\n' "$out" | grep -Eq "$pattern"; then
     echo "PASS: $desc"
   else
@@ -22,7 +22,7 @@ expect() {
 # reject <description> <transcript> <egrep-pattern> — assert the pattern is ABSENT
 reject() {
   desc=$1; transcript=$2; pattern=$3
-  out=$(printf '%b' "$transcript" | "$ENGINE" 2>/dev/null)
+  out=$(printf '%b' "$transcript" | timeout 30 "$ENGINE" 2>/dev/null)
   if printf '%s\n' "$out" | grep -Eq "$pattern"; then
     echo "FAIL: $desc -- unexpected /$pattern/"
     fail=1
@@ -86,5 +86,10 @@ expect "normal position still uses score cp"    'uci\nposition startpos\ngo dept
 # --- Phase 3 hardening: side-to-move score perspective ---
 expect "black-to-move winning -> positive cp" 'uci\nposition fen 3qk3/8/8/8/8/8/8/4K3 b - - 0 1\ngo depth 4\nquit\n' '^info depth [0-9]+ score cp [0-9]'
 expect "black-to-move losing -> negative cp"  'uci\nposition fen 4k3/8/8/8/8/8/8/3QK3 b - - 0 1\ngo depth 4\nquit\n' '^info depth [0-9]+ score cp -[0-9]'
+
+# --- Phase 4 Task 1: clock-based time control ---
+expect "go wtime/btime (sudden death) -> bestmove" 'uci\nposition startpos\ngo wtime 1000 btime 1000 winc 100 binc 100\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "go with movestogo -> bestmove"             'uci\nposition startpos\ngo wtime 2000 btime 2000 movestogo 30\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "clock search still streams info"           'uci\nposition startpos\ngo wtime 2000 btime 2000\nquit\n' '^info depth [0-9]+ score cp '
 
 exit $fail
