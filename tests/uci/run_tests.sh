@@ -77,4 +77,10 @@ expect "info line has all fields + coord pv" 'uci\nposition startpos\ngo depth 8
 expect "info streams an early depth too"      'uci\nposition startpos\ngo depth 8\nquit\n' '^info depth 1 score cp '
 expect "bestmove still follows the info"      'uci\nposition startpos\ngo depth 8\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 
+# --- Phase 3 Task 2: mate scores ---
+# Fool's mate, Black to move: Qd8-h4 is mate in 1.
+expect "mate-in-1 -> score mate 1 with pv d8h4" 'uci\nposition fen rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2\ngo depth 4\nquit\n' '^info depth [0-9]+ score mate 1 .* pv d8h4'
+# Non-mate position still reports cp.
+expect "normal position still uses score cp"    'uci\nposition startpos\ngo depth 6\nquit\n' '^info depth [0-9]+ score cp '
+
 exit $fail

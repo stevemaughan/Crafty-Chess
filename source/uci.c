@@ -182,12 +182,18 @@ static void UCIPosition(int nargs, char *args[]) {
 void UCIInfo(int wtm, int etime, PATH *pv) {
   TREE *const tree = block[0];
   uint64_t nodes = tree->nodes_searched;
-  uint64_t nps = (etime > 0) ? (nodes * 100 / (uint64_t) etime) : nodes;
-  int i, n = 0;
+  uint64_t nps = (etime > 0) ? (nodes * 100 / (uint64_t) etime) : 0;
+  int i, n = 0, score = pv->pathv;
   char line[4096];
 
-  n += sprintf(line + n, "info depth %d score cp %d nodes %" PRIu64
-      " nps %" PRIu64 " time %d pv", pv->pathd, (wtm) ? pv->pathv : -pv->pathv,
+  if (MateScore(pv->pathv)) {
+    int moves = (MATE - Abs(pv->pathv) + 1) / 2;
+
+    n += sprintf(line + n, "info depth %d score mate %d", pv->pathd,
+        (score > 0) ? moves : -moves);
+  } else
+    n += sprintf(line + n, "info depth %d score cp %d", pv->pathd, score);
+  n += sprintf(line + n, " nodes %" PRIu64 " nps %" PRIu64 " time %d pv",
       nodes, nps, etime * 10);
   for (i = 1; i < pv->pathl; i++) {
     char mv[8];
