@@ -174,10 +174,11 @@ static void UCIPosition(int nargs, char *args[]) {
 /*
  *  UCIInfo() emits one UCI "info" line for a completed search iteration.  It is
  *  called from DisplayPV() when uci_mode is set, replacing Crafty's native PV
- *  display.  Crafty's pv->pathv is White-relative centipawns (PAWN_VALUE==100);
- *  UCI wants side-to-move-relative, so the score is negated when Black is to
- *  move.  The DisplayPV "time" argument is centiseconds; UCI uses ms and nps in
- *  nodes/sec.  Moves are formatted with UCIMove (coordinate notation).
+ *  display.  Crafty's pv->pathv is already side-to-move-relative centipawns
+ *  (positive = good for the side to move; PAWN_VALUE==100), which is exactly
+ *  what UCI wants, so the score is used directly with no color negation.  The
+ *  DisplayPV "time" argument is centiseconds; UCI uses ms and nps in nodes/sec.
+ *  Moves are formatted with UCIMove (coordinate notation).
  */
 void UCIInfo(int wtm, int etime, PATH *pv) {
   TREE *const tree = block[0];
