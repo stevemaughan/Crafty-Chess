@@ -97,4 +97,7 @@ expect "stop interrupts go infinite -> bestmove"   'uci\nposition startpos\ngo i
 expect "stop interrupts a long search -> bestmove" 'uci\nposition startpos\ngo movetime 60000\nstop\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 expect "isready during search -> readyok"          'uci\nposition startpos\ngo infinite\nisready\nstop\nquit\n' '^readyok'
 
+# --- Phase 4 hardening: quit during a search exits cleanly (no hang) ---
+expect "quit during infinite search -> bestmove then exit" 'uci\nposition startpos\ngo infinite\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+
 exit $fail

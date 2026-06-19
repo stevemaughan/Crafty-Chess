@@ -67,6 +67,7 @@ void Interrupt(int ply) {
           continue;
         }
         if (!strcmp(args[0], "quit")) {
+          quit = 1;
           if (thinking || pondering)
             abort_search = 1;
           break;

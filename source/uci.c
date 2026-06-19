@@ -283,6 +283,8 @@ void UCI(void) {
   uci_mode = 1;
   UCISendId();
   while (FOREVER) {
+    if (quit)
+      break;
     if (Read(1, buffer) < 0)
       break;
     nargs = ReadParse(buffer, args, " \t");
