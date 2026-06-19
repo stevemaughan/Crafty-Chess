@@ -60,6 +60,7 @@ static void UCIMove(int move, char *out) {
 static void UCIGo(int nargs, char *args[]) {
   TREE *const tree = block[0];
   int i, best, saved_display_options, saved_kibitz, saved_post;
+  unsigned saved_noise;
   char movestr[8];
 
   search_depth = 0;
@@ -78,9 +79,11 @@ static void UCIGo(int nargs, char *args[]) {
   saved_display_options = display_options;
   saved_kibitz = kibitz;
   saved_post = post;
+  saved_noise = noise_level;
   display_options = 0;
   kibitz = 0;
   post = 0;
+  noise_level = 0;
 /*
  *  Set the pre-search state the same way main()'s game loop does, then search.
  */
@@ -95,6 +98,7 @@ static void UCIGo(int nargs, char *args[]) {
   display_options = saved_display_options;
   kibitz = saved_kibitz;
   post = saved_post;
+  noise_level = saved_noise;
 /*
  *  Report the best move (the first move of the principal variation).
  */
@@ -165,6 +169,41 @@ static void UCIPosition(int nargs, char *args[]) {
     if (game_wtm)
       move_number++;
   }
+}
+
+/*
+ *  UCIInfo() emits one UCI "info" line for a completed search iteration.  It is
+ *  called from DisplayPV() when uci_mode is set, replacing Crafty's native PV
+ *  display.  Crafty's pv->pathv is already side-to-move-relative centipawns
+ *  (positive = good for the side to move; PAWN_VALUE==100), which is exactly
+ *  what UCI wants, so the score is used directly with no color negation.  The
+ *  DisplayPV "time" argument is centiseconds; UCI uses ms and nps in nodes/sec.
+ *  Moves are formatted with UCIMove (coordinate notation).
+ */
+void UCIInfo(int wtm, int etime, PATH *pv) {
+  TREE *const tree = block[0];
+  uint64_t nodes = tree->nodes_searched;
+  uint64_t nps = (etime > 0) ? (nodes * 100 / (uint64_t) etime) : 0;
+  int i, n = 0, score = pv->pathv;
+  char line[4096];
+
+  if (MateScore(pv->pathv)) {
+    int moves = (MATE - Abs(pv->pathv) + 1) / 2;
+
+    n += sprintf(line + n, "info depth %d score mate %d", pv->pathd,
+        (score > 0) ? moves : -moves);
+  } else
+    n += sprintf(line + n, "info depth %d score cp %d", pv->pathd, score);
+  n += sprintf(line + n, " nodes %" PRIu64 " nps %" PRIu64 " time %d pv",
+      nodes, nps, etime * 10);
+  for (i = 1; i < pv->pathl; i++) {
+    char mv[8];
+
+    UCIMove(pv->path[i], mv);
+    n += sprintf(line + n, " %s", mv);
+  }
+  printf("%s\n", line);
+  fflush(stdout);
 }
 
 static void UCISendId(void) {
