@@ -486,6 +486,7 @@ void *EGTB_cache = (void *) 0;
 int EGTB_setup = 0;
 #endif
 int xboard = 0;
+int uci_mode = 0;
 int xboard_done = 0;
 int pong = 0;
 int early_exit = 99;

@@ -1,3 +1,7 @@
+# Crafty runtime artifacts (auto-numbered log/game files written on each run)
+log.*
+game.*
+
 # Prerequisites
 *.d
 

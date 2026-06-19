@@ -3913,6 +3913,19 @@ int Option(TREE * RESTRICT tree) {
 /*
  ************************************************************
  *                                                          *
+ *  "uci" command switches Crafty into UCI mode and hands   *
+ *  control to the UCI() input loop, which does not return  *
+ *  (it exits via CraftyExit on "quit").                    *
+ *                                                          *
+ ************************************************************
+ */
+  else if (!strcmp(*args, "uci")) {
+    uci_mode = 1;
+    UCI();
+  }
+/*
+ ************************************************************
+ *                                                          *
  *  "?" command does nothing, but since this is the "move   *
  *  now" keystroke, if Crafty is not searching, this will   *
  *  simply "wave it off" rather than produce an error.      *

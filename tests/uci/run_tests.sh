@@ -1,0 +1,43 @@
+#!/usr/bin/env sh
+# UCI protocol transcript tests for Crafty.
+# Usage (from repo root):  sh tests/uci/run_tests.sh [path-to-engine]
+# Each test pipes a transcript to the engine and greps its stdout.
+# Every transcript must end with "quit\n" so the engine terminates.
+set -u
+ENGINE="${1:-source/crafty_test.exe}"
+fail=0
+
+# expect <description> <transcript-with-\n-escapes> <egrep-pattern>
+expect() {
+  desc=$1; transcript=$2; pattern=$3
+  out=$(printf '%b' "$transcript" | "$ENGINE" 2>/dev/null)
+  if printf '%s\n' "$out" | grep -Eq "$pattern"; then
+    echo "PASS: $desc"
+  else
+    echo "FAIL: $desc -- expected /$pattern/"
+    fail=1
+  fi
+}
+
+# --- Task 1: smoke (engine builds and runs) ---
+expect "engine builds and runs" 'quit\n' 'Crafty v25\.2'
+
+# --- Task 2: handshake ---
+expect "uci -> uciok"     'uci\nquit\n' '^uciok'
+expect "uci -> id name"   'uci\nquit\n' '^id name Crafty 25\.2'
+expect "uci -> id author" 'uci\nquit\n' '^id author Robert Hyatt'
+
+# --- Task 3: isready ---
+expect "isready -> readyok" 'uci\nisready\nquit\n' '^readyok'
+
+# --- Task 4: option enumeration ---
+expect "option Hash"          'uci\nquit\n' '^option name Hash type spin default 64 min 1 max 65536'
+expect "option Threads"       'uci\nquit\n' '^option name Threads type spin default 1 min 1 max'
+expect "option Ponder"        'uci\nquit\n' '^option name Ponder type check default false'
+expect "option SyzygyPath"    'uci\nquit\n' '^option name SyzygyPath type string'
+expect "option OwnBook"       'uci\nquit\n' '^option name OwnBook type check default false'
+expect "option BookFile"      'uci\nquit\n' '^option name BookFile type string'
+expect "option MultiPV"       'uci\nquit\n' '^option name MultiPV type spin default 1 min 1 max 256'
+expect "option Move Overhead" 'uci\nquit\n' '^option name Move Overhead type spin default 30 min 0 max 5000'
+
+exit $fail

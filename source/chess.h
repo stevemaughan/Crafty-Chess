@@ -327,6 +327,7 @@ typedef struct thread {
 void AlignedMalloc(void **, uint64_t, size_t);
 void AlignedRemalloc(void **, uint64_t, size_t);
 void Analyze(void);
+void UCI(void);
 void Annotate(void);
 void AnnotateHeaderHTML(char *, FILE *);
 void AnnotateFooterHTML(FILE *);
