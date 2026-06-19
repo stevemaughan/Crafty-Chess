@@ -113,10 +113,12 @@ static void UCIGo(int nargs, char *args[]) {
 
 /*
  *  UCIPosition() sets the board from a UCI "position" command:
- *  "position startpos [moves ...]" or "position fen <6 fields> [moves ...]".
- *  Only the first four FEN fields are used (SetBoard ignores half/full-move
- *  counters).  The moves list is replayed exactly as main()'s game loop applies
- *  opponent moves, keeping repetition/50-move state correct.
+ *  "position startpos [moves ...]" or "position fen <FEN> [moves ...]".
+ *  The FEN can include all 6 fields, but only the first four are used:
+ *  piece placement, side to move, castling rights, and en passant square.
+ *  Half-move and full-move counters are ignored. The moves list is replayed
+ *  exactly as main()'s game loop applies opponent moves, keeping repetition/50-move
+ *  state correct.
  */
 static void UCIPosition(int nargs, char *args[]) {
   TREE *const tree = block[0];

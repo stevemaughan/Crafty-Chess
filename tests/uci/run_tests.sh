@@ -69,4 +69,7 @@ expect "position stalemate -> bestmove 0000" 'uci\nposition fen 7k/5Q2/6K1/8/8/8
 # --- Task 3 (Phase 2): ucinewgame ---
 expect "ucinewgame then play works" 'uci\nucinewgame\nposition startpos\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 
+# --- Phase 2 hardening: promotion move formatting ---
+expect "promotion emits lowercase q" 'uci\nposition fen 8/P6k/8/8/8/8/7K/8 w - - 0 1\ngo depth 6\nquit\n' '^bestmove a7a8q'
+
 exit $fail
