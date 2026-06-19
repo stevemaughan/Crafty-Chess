@@ -705,7 +705,7 @@ int Iterate(int wtm, int search_type, int root_list_done) {
   }
   program_end_time = ReadClock();
   search_move = 0;
-  if (quit)
+  if (quit && !uci_mode)
     CraftyExit(0);
   return last_root_value;
 }

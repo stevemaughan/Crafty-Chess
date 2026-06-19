@@ -49,6 +49,31 @@ void Interrupt(int ply) {
         Print(32, "ok.\n");
         break;
       }
+/*
+ *  In UCI mode, handle the mid-search commands directly and never fall through
+ *  to Crafty's native command processing.  "stop" aborts the search to play the
+ *  best move so far; we break so the bestmove is emitted before any following
+ *  command (e.g. "quit") is read.  "isready" must be answered even mid-search.
+ */
+      if (uci_mode) {
+        if (!strcmp(args[0], "stop")) {
+          if (thinking || pondering)
+            abort_search = 1;
+          break;
+        }
+        if (!strcmp(args[0], "isready")) {
+          printf("readyok\n");
+          fflush(stdout);
+          continue;
+        }
+        if (!strcmp(args[0], "quit")) {
+          quit = 1;
+          if (thinking || pondering)
+            abort_search = 1;
+          break;
+        }
+        continue;
+      }
       if (strcmp(args[0], ".")) {
         save_move_number = move_number;
         if (!game_wtm)

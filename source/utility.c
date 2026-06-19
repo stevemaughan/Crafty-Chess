@@ -272,13 +272,13 @@ int CheckInput(void) {
   static HANDLE inh;
   DWORD dw;
 
-  if (!xboard && !isatty(fileno(stdin)))
+  if (!xboard && !uci_mode && !isatty(fileno(stdin)))
     return 0;
   if (batch_mode)
     return 0;
   if (strchr(cmd_buffer, '\n'))
     return 1;
-  if (xboard) {
+  if (xboard || uci_mode) {
 #  if defined(FILE_CNT)
     if (stdin->_cnt > 0)
       return stdin->_cnt;
@@ -314,7 +314,7 @@ int CheckInput(void) {
   struct timeval tv;
   int data;
 
-  if (!xboard && !isatty(fileno(stdin)))
+  if (!xboard && !uci_mode && !isatty(fileno(stdin)))
     return 0;
   if (batch_mode)
     return 0;
