@@ -30,4 +30,14 @@ expect "uci -> id author" 'uci\nquit\n' '^id author Robert Hyatt'
 # --- Task 3: isready ---
 expect "isready -> readyok" 'uci\nisready\nquit\n' '^readyok'
 
+# --- Task 4: option enumeration ---
+expect "option Hash"          'uci\nquit\n' '^option name Hash type spin default 64 min 1 max 65536'
+expect "option Threads"       'uci\nquit\n' '^option name Threads type spin default 1 min 1 max'
+expect "option Ponder"        'uci\nquit\n' '^option name Ponder type check default false'
+expect "option SyzygyPath"    'uci\nquit\n' '^option name SyzygyPath type string'
+expect "option OwnBook"       'uci\nquit\n' '^option name OwnBook type check default false'
+expect "option BookFile"      'uci\nquit\n' '^option name BookFile type string'
+expect "option MultiPV"       'uci\nquit\n' '^option name MultiPV type spin default 1 min 1 max 256'
+expect "option Move Overhead" 'uci\nquit\n' '^option name Move Overhead type spin default 30 min 0 max 5000'
+
 exit $fail

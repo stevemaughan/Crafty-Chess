@@ -26,7 +26,14 @@
 static void UCISendId(void) {
   printf("\nid name Crafty %s\n", version);
   printf("id author Robert Hyatt\n");
-  /* (UCI options are enumerated here in a later task.) */
+  printf("option name Hash type spin default 64 min 1 max 65536\n");
+  printf("option name Threads type spin default 1 min 1 max %d\n", CPUS);
+  printf("option name Ponder type check default false\n");
+  printf("option name SyzygyPath type string default <empty>\n");
+  printf("option name OwnBook type check default false\n");
+  printf("option name BookFile type string default book.bin\n");
+  printf("option name MultiPV type spin default 1 min 1 max 256\n");
+  printf("option name Move Overhead type spin default 30 min 0 max 5000\n");
   printf("uciok\n");
   fflush(stdout);
 }
