@@ -53,7 +53,7 @@ expect "option MultiPV"       'uci\nquit\n' '^option name MultiPV type spin defa
 expect "option Move Overhead" 'uci\nquit\n' '^option name Move Overhead type spin default 30 min 0 max 5000'
 
 # --- Task 1 (Phase 2): go / bestmove on the start position ---
-expect "go depth -> well-formed bestmove" 'uci\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8][nbrq]?$'
+expect "go depth -> well-formed bestmove" 'uci\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8][nbrq]?( ponder [a-h][1-8][a-h][1-8][nbrq]?)?$'
 expect "go movetime -> bestmove"          'uci\ngo movetime 200\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 reject "no native search header leaks"    'uci\ngo depth 6\nquit\n' 'variation'
 reject "no native PV ply line leaks"      'uci\ngo depth 6\nquit\n' '^\s+[0-9]+->'
@@ -99,5 +99,12 @@ expect "isready during search -> readyok"          'uci\nposition startpos\ngo i
 
 # --- Phase 4 hardening: quit during a search exits cleanly (no hang) ---
 expect "quit during infinite search -> bestmove then exit" 'uci\nposition startpos\ngo infinite\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+
+# --- Phase 5 Task 1: ponder move in bestmove ---
+expect "bestmove includes a ponder move" 'uci\nposition startpos\ngo depth 8\nquit\n' '^bestmove [a-h][1-8][a-h][1-8] ponder [a-h][1-8][a-h][1-8]'
+
+# --- Phase 5 Task 2: go ponder + ponderhit ---
+expect "go ponder then stop -> bestmove"                  'uci\nposition startpos\ngo ponder wtime 2000 btime 2000\nstop\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "ponderhit converts ponder to a timed search"      'uci\nposition startpos\ngo ponder wtime 2000 btime 2000\nponderhit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 
 exit $fail
