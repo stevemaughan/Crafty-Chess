@@ -172,7 +172,7 @@ profile:
         see.o tbprobe.o boolean.o utility.o book.o drawn.o epd.o \
         epdglue.o init.o input.o autotune.o interrupt.o option.o output.o \
         ponder.o resign.o root.o learn.o setboard.o test.o validate.o \
-        annotate.o analyze.o evtest.o bench.o edit.o data.o
+        annotate.o analyze.o evtest.o bench.o edit.o uci.o data.o
 
 objects = crafty.o
 

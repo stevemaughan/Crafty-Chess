@@ -43,6 +43,7 @@
 #include "learn.c"
 #include "main.c"
 #include "option.c"
+#include "uci.c"
 #include "output.c"
 #include "ponder.c"
 #include "resign.c"

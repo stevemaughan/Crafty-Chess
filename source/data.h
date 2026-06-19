@@ -77,6 +77,7 @@ extern size_t adaptive_hashp_min;
 extern size_t adaptive_hashp_max;
 extern int over;
 extern int xboard;
+extern int uci_mode;
 extern int xboard_done;
 extern int pong;
 extern char book_path[128];

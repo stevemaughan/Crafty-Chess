@@ -22,4 +22,9 @@ expect() {
 # --- Task 1: smoke (engine builds and runs) ---
 expect "engine builds and runs" 'quit\n' 'Crafty v25\.2'
 
+# --- Task 2: handshake ---
+expect "uci -> uciok"     'uci\nquit\n' '^uciok'
+expect "uci -> id name"   'uci\nquit\n' '^id name Crafty 25\.2'
+expect "uci -> id author" 'uci\nquit\n' '^id author Robert Hyatt'
+
 exit $fail
