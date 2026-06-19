@@ -215,7 +215,7 @@ Append to `tests/uci/run_tests.sh` before `exit $fail`:
 ```sh
 # --- Task 2 (Phase 2): position setup ---
 # Fool's-mate position, Black to move: Qd8-h4 is mate (unique). Expect d8h4.
-expect "position fen + go finds mate-in-1" 'uci\nposition fen rnb1kbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2\ngo depth 4\nquit\n' '^bestmove d8h4'
+expect "position fen + go finds mate-in-1" 'uci\nposition fen rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2\ngo depth 4\nquit\n' '^bestmove d8h4'
 # startpos + replayed moves yields a legal reply.
 expect "position startpos moves -> legal reply" 'uci\nposition startpos moves e2e4 e7e5 g1f3\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 # Stalemate (Black to move, no legal move, not in check) -> bestmove 0000.
