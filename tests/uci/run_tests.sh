@@ -83,4 +83,8 @@ expect "mate-in-1 -> score mate 1 with pv d8h4" 'uci\nposition fen rnbqkbnr/pppp
 # Non-mate position still reports cp.
 expect "normal position still uses score cp"    'uci\nposition startpos\ngo depth 6\nquit\n' '^info depth [0-9]+ score cp '
 
+# --- Phase 3 hardening: side-to-move score perspective ---
+expect "black-to-move winning -> positive cp" 'uci\nposition fen 3qk3/8/8/8/8/8/8/4K3 b - - 0 1\ngo depth 4\nquit\n' '^info depth [0-9]+ score cp [0-9]'
+expect "black-to-move losing -> negative cp"  'uci\nposition fen 4k3/8/8/8/8/8/8/3QK3 b - - 0 1\ngo depth 4\nquit\n' '^info depth [0-9]+ score cp -[0-9]'
+
 exit $fail
