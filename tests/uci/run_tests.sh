@@ -19,6 +19,18 @@ expect() {
   fi
 }
 
+# reject <description> <transcript> <egrep-pattern> — assert the pattern is ABSENT
+reject() {
+  desc=$1; transcript=$2; pattern=$3
+  out=$(printf '%b' "$transcript" | "$ENGINE" 2>/dev/null)
+  if printf '%s\n' "$out" | grep -Eq "$pattern"; then
+    echo "FAIL: $desc -- unexpected /$pattern/"
+    fail=1
+  else
+    echo "PASS: $desc"
+  fi
+}
+
 # --- Task 1: smoke (engine builds and runs) ---
 expect "engine builds and runs" 'quit\n' 'Crafty v25\.2'
 
@@ -39,5 +51,25 @@ expect "option OwnBook"       'uci\nquit\n' '^option name OwnBook type check def
 expect "option BookFile"      'uci\nquit\n' '^option name BookFile type string'
 expect "option MultiPV"       'uci\nquit\n' '^option name MultiPV type spin default 1 min 1 max 256'
 expect "option Move Overhead" 'uci\nquit\n' '^option name Move Overhead type spin default 30 min 0 max 5000'
+
+# --- Task 1 (Phase 2): go / bestmove on the start position ---
+expect "go depth -> well-formed bestmove" 'uci\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8][nbrq]?$'
+expect "go movetime -> bestmove"          'uci\ngo movetime 200\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+reject "no native search header leaks"    'uci\ngo depth 6\nquit\n' 'variation'
+reject "no native PV ply line leaks"      'uci\ngo depth 6\nquit\n' '^\s+[0-9]+->'
+
+# --- Task 2 (Phase 2): position setup ---
+# Fool's-mate position, Black to move: Qd8-h4 is mate (unique). Expect d8h4.
+expect "position fen + go finds mate-in-1" 'uci\nposition fen rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2\ngo depth 4\nquit\n' '^bestmove d8h4'
+# startpos + replayed moves yields a legal reply.
+expect "position startpos moves -> legal reply" 'uci\nposition startpos moves e2e4 e7e5 g1f3\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+# Stalemate (Black to move, no legal move, not in check) -> bestmove 0000.
+expect "position stalemate -> bestmove 0000" 'uci\nposition fen 7k/5Q2/6K1/8/8/8/8/8 b - - 0 1\ngo depth 2\nquit\n' '^bestmove 0000'
+
+# --- Task 3 (Phase 2): ucinewgame ---
+expect "ucinewgame then play works" 'uci\nucinewgame\nposition startpos\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+
+# --- Phase 2 hardening: promotion move formatting ---
+expect "promotion emits lowercase q" 'uci\nposition fen 8/P6k/8/8/8/8/7K/8 w - - 0 1\ngo depth 6\nquit\n' '^bestmove a7a8q'
 
 exit $fail
