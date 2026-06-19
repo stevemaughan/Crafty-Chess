@@ -941,6 +941,10 @@ void DisplayPV(TREE * RESTRICT tree, int level, int wtm, int time, PATH * pv,
   int i, len, t_move_number, nskip = 0, twtm = wtm, pv_depth = pv->pathd;;
   unsigned int idle_time;
 
+  if (uci_mode) {
+    UCIInfo(wtm, time, pv);
+    return;
+  }
 /*
  ************************************************************
  *                                                          *

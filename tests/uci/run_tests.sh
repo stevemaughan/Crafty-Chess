@@ -72,4 +72,9 @@ expect "ucinewgame then play works" 'uci\nucinewgame\nposition startpos\ngo dept
 # --- Phase 2 hardening: promotion move formatting ---
 expect "promotion emits lowercase q" 'uci\nposition fen 8/P6k/8/8/8/8/7K/8 w - - 0 1\ngo depth 6\nquit\n' '^bestmove a7a8q'
 
+# --- Phase 3 Task 1: UCI info streaming (cp scores) ---
+expect "info line has all fields + coord pv" 'uci\nposition startpos\ngo depth 8\nquit\n' '^info depth 8 score cp -?[0-9]+ nodes [0-9]+ nps [0-9]+ time [0-9]+ pv [a-h][1-8][a-h][1-8]'
+expect "info streams an early depth too"      'uci\nposition startpos\ngo depth 8\nquit\n' '^info depth 1 score cp '
+expect "bestmove still follows the info"      'uci\nposition startpos\ngo depth 8\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+
 exit $fail

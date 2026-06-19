@@ -378,6 +378,7 @@ char *DisplayKMB(uint64_t, int);
 void DisplayFail(TREE *RESTRICT, int, int, int, int, int, int, int);
 char *DisplayPath(TREE *RESTRICT, int, PATH *);
 void DisplayPV(TREE *RESTRICT, int, int, int, PATH *, int);
+void UCIInfo(int, int, PATH *);
 char *DisplayTime(unsigned);
 char *Display2Times(unsigned);
 char *DisplayTimeKibitz(unsigned);
