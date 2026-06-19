@@ -58,4 +58,12 @@ expect "go movetime -> bestmove"          'uci\ngo movetime 200\nquit\n' '^bestm
 reject "no native search header leaks"    'uci\ngo depth 6\nquit\n' 'variation'
 reject "no native PV ply line leaks"      'uci\ngo depth 6\nquit\n' '^\s+[0-9]+->'
 
+# --- Task 2 (Phase 2): position setup ---
+# Fool's-mate position, Black to move: Qd8-h4 is mate (unique). Expect d8h4.
+expect "position fen + go finds mate-in-1" 'uci\nposition fen rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2\ngo depth 4\nquit\n' '^bestmove d8h4'
+# startpos + replayed moves yields a legal reply.
+expect "position startpos moves -> legal reply" 'uci\nposition startpos moves e2e4 e7e5 g1f3\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+# Stalemate (Black to move, no legal move, not in check) -> bestmove 0000.
+expect "position stalemate -> bestmove 0000" 'uci\nposition fen 7k/5Q2/6K1/8/8/8/8/8 b - - 0 1\ngo depth 2\nquit\n' '^bestmove 0000'
+
 exit $fail

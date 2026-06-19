@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include "chess.h"
 #include "data.h"
+
+static const char uci_start_fen[] =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 /*
  *******************************************************************************
  *                                                                             *
@@ -108,6 +111,60 @@ static void UCIGo(int nargs, char *args[]) {
   search_time_limit = 0;
 }
 
+/*
+ *  UCIPosition() sets the board from a UCI "position" command:
+ *  "position startpos [moves ...]" or "position fen <6 fields> [moves ...]".
+ *  Only the first four FEN fields are used (SetBoard ignores half/full-move
+ *  counters).  The moves list is replayed exactly as main()'s game loop applies
+ *  opponent moves, keeping repetition/50-move state correct.
+ */
+static void UCIPosition(int nargs, char *args[]) {
+  TREE *const tree = block[0];
+  int i, move, wtm, moves_at = -1;
+  char *fen_args[4];
+
+  if (nargs < 2)
+    return;
+  if (!strcmp(args[1], "startpos")) {
+    fen_args[0] = (char *) uci_start_fen;
+    fen_args[1] = "w";
+    fen_args[2] = "KQkq";
+    fen_args[3] = "-";
+    SetBoard(tree, 4, fen_args, 0);
+  } else if (!strcmp(args[1], "fen")) {
+    if (nargs < 6)               /* need piece, side, castle, ep */
+      return;
+    fen_args[0] = args[2];
+    fen_args[1] = args[3];
+    fen_args[2] = args[4];
+    fen_args[3] = args[5];
+    SetBoard(tree, 4, fen_args, 0);
+  } else
+    return;
+  move_number = 1;
+/*
+ *  Locate the "moves" keyword (it cannot appear inside a FEN), then replay.
+ */
+  for (i = 2; i < nargs; i++)
+    if (!strcmp(args[i], "moves")) {
+      moves_at = i + 1;
+      break;
+    }
+  if (moves_at < 0)
+    return;
+  for (i = moves_at; i < nargs; i++) {
+    wtm = game_wtm;
+    move = InputMove(tree, 0, wtm, 1, 0, args[i]);
+    if (!move)                   /* illegal/garbled: stop replaying */
+      break;
+    MakeMoveRoot(tree, wtm, move);
+    tree->curmv[0] = move;
+    game_wtm = Flip(wtm);
+    if (game_wtm)
+      move_number++;
+  }
+}
+
 static void UCISendId(void) {
   printf("\nid name Crafty %s\n", version);
   printf("id author Robert Hyatt\n");
@@ -138,6 +195,8 @@ void UCI(void) {
       printf("readyok\n");
       fflush(stdout);
     }
+    else if (!strcmp(args[0], "position"))
+      UCIPosition(nargs, args);
     else if (!strcmp(args[0], "go"))
       UCIGo(nargs, args);
     else if (!strcmp(args[0], "quit"))
