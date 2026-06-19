@@ -103,4 +103,8 @@ expect "quit during infinite search -> bestmove then exit" 'uci\nposition startp
 # --- Phase 5 Task 1: ponder move in bestmove ---
 expect "bestmove includes a ponder move" 'uci\nposition startpos\ngo depth 8\nquit\n' '^bestmove [a-h][1-8][a-h][1-8] ponder [a-h][1-8][a-h][1-8]'
 
+# --- Phase 5 Task 2: go ponder + ponderhit ---
+expect "go ponder then stop -> bestmove"                  'uci\nposition startpos\ngo ponder wtime 2000 btime 2000\nstop\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "ponderhit converts ponder to a timed search"      'uci\nposition startpos\ngo ponder wtime 2000 btime 2000\nponderhit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+
 exit $fail

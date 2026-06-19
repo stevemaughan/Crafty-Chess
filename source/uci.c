@@ -96,7 +96,7 @@ static void UCIGo(int nargs, char *args[]) {
   TREE *const tree = block[0];
   int i, best, saved_display_options, saved_kibitz, saved_post;
   int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, has_clock = 0;
-  int infinite = 0;
+  int infinite = 0, ponder_flag = 0;
   unsigned saved_noise;
   char movestr[8];
 
@@ -121,13 +121,15 @@ static void UCIGo(int nargs, char *args[]) {
       movestogo = atoi(args[++i]);
     else if (!strcmp(args[i], "infinite"))
       infinite = 1;
+    else if (!strcmp(args[i], "ponder"))
+      ponder_flag = 1;
   }
   if (search_depth == 0 && search_time_limit == 0) {
     if (infinite)
       ;                         /* pondering=1 below makes the search run until stop */
     else if (has_clock)
       UCISetClock(wtime, btime, winc, binc, movestogo);
-    else
+    else if (!ponder_flag)
       search_depth = UCI_DEFAULT_DEPTH;
   }
 /*
@@ -144,7 +146,7 @@ static void UCIGo(int nargs, char *args[]) {
 /*
  *  Set the pre-search state the same way main()'s game loop does, then search.
  */
-  pondering = (infinite) ? 1 : 0;
+  pondering = (infinite || ponder_flag) ? 1 : 0;
   thinking = 1;
   last_pv.pathd = 0;
   last_pv.pathl = 0;

@@ -72,6 +72,10 @@ void Interrupt(int ply) {
             abort_search = 1;
           break;
         }
+        if (!strcmp(args[0], "ponderhit")) {
+          pondering = 0;
+          continue;
+        }
         continue;
       }
       if (strcmp(args[0], ".")) {
