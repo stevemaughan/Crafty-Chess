@@ -166,7 +166,13 @@ static void UCIGo(int nargs, char *args[]) {
     printf("bestmove 0000\n");
   else {
     UCIMove(best, movestr);
-    printf("bestmove %s\n", movestr);
+    if (last_pv.pathl >= 3 && last_pv.path[2]) {
+      char pondermv[8];
+
+      UCIMove(last_pv.path[2], pondermv);
+      printf("bestmove %s ponder %s\n", movestr, pondermv);
+    } else
+      printf("bestmove %s\n", movestr);
   }
   fflush(stdout);
   search_depth = 0;
