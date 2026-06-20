@@ -329,7 +329,30 @@ static void UCISetOption(int nargs, char *args[]) {
     ponder = (!strcmp(value, "true")) ? 1 : 0;
   else if (!strcmp(name, "Move Overhead"))
     uci_move_overhead = atoi(value) / 10;
-  /* (Hash, Threads, SyzygyPath added in Task 2; OwnBook/BookFile in Task 3) */
+  else if (!strcmp(name, "Hash")) {
+    display_options = 0;
+    sprintf(buffer, "hash %dM", atoi(value));
+    Option(tree);
+  } else if (!strcmp(name, "Threads")) {
+    int n = atoi(value);
+
+    if (n < 1)
+      n = 1;
+    if (n > CPUS)
+      n = CPUS;
+    display_options = 0;
+    /* Crafty's mt command rejects 1 (must be 0=disabled or >1); map 1->0 */
+    sprintf(buffer, "mt %d", (n == 1) ? 0 : n);
+    Option(tree);
+  } else if (!strcmp(name, "SyzygyPath")) {
+    strncpy(tb_path, value, sizeof(tb_path) - 1);
+    tb_path[sizeof(tb_path) - 1] = 0;
+#if defined(SYZYGY)
+    display_options = 0;
+    strcpy(buffer, "egtb");
+    Option(tree);
+#endif
+  }
   display_options = saved_display_options;
 }
 

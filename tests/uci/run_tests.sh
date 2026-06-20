@@ -112,4 +112,10 @@ expect "setoption Ponder accepted, engine still plays" 'uci\nsetoption name Pond
 expect "setoption Move Overhead accepted"             'uci\nsetoption name Move Overhead value 50\nposition startpos\ngo wtime 2000 btime 2000\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 expect "clock-less go ponder + ponderhit terminates"  'uci\nposition startpos\ngo ponder\nponderhit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 
+# --- Phase 6 Task 2: Hash, Threads, SyzygyPath ---
+expect "setoption Hash accepted, engine still plays"     'uci\nsetoption name Hash value 64\nposition startpos\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "setoption Threads accepted, engine still plays"  'uci\nsetoption name Threads value 1\nposition startpos\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "setoption SyzygyPath accepted, engine still plays" 'uci\nsetoption name SyzygyPath value C:/tb\nposition startpos\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+reject "setoption emits no stray output before bestmove" 'uci\nsetoption name Hash value 64\nsetoption name Threads value 1\nquit\n' 'hash|threads|error|ERROR'
+
 exit $fail
