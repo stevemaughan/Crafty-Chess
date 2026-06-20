@@ -42,7 +42,7 @@ Key files for this work:
 | [source/interrupt.c](source/interrupt.c) | `Interrupt()` — reads input **during** a search and sets `abort_search` / `input_status`. Crafty's native `?` ("move now") and `@` ("ponder move played") are the semantic equivalents of UCI `stop` and `ponderhit` |
 | [source/iterate.c](source/iterate.c) | `Iterate()` — iterative-deepening driver (the search entry point) |
 | [source/ponder.c](source/ponder.c) | Pondering / permanent-brain logic |
-| [source/analyze.c](source/analyze.c) | Analyze mode (permanent-pondering; basis for `go infinite` / MultiPV) |
+| [source/analyze.c](source/analyze.c) | Analyze mode (permanent-pondering; basis for `go infinite`) |
 | [source/search.c](source/search.c), [source/quiesce.c](source/quiesce.c), [source/next.c](source/next.c) | Alpha-beta search, quiescence, move ordering |
 | [source/hash.c](source/hash.c) | Transposition table (`hash` option) |
 | [source/tbprobe.c](source/tbprobe.c), [source/tbcore.c](source/tbcore.c) | Syzygy tablebases (`egtb` command, `-DSYZYGY`) |
@@ -100,8 +100,9 @@ Scope agreed for this conversion:
 - **Ponder** (check) → pondering on/off
 - **SyzygyPath** (string) → `egtb` path + init
 - **OwnBook** (check) + **BookFile** (string) → opening book toggle/path
-- **MultiPV** (spin) → number of lines (analyze multi-PV)
 - **Move Overhead** (spin, ms) → time buffer subtracted in time management
+
+(**MultiPV** was dropped: Crafty has no multi-PV search, and adding real N-line MultiPV would require modifying its root search. The option is not advertised.)
 
 Deeper Crafty personality/eval knobs are intentionally **out of scope for now** (easy to add later).
 
@@ -137,7 +138,7 @@ king-move coordinates.
 3. **Info output** — translate PV/score/depth/nodes to `info` lines.
 4. **Time control** — `wtime`/`btime`/`winc`/`binc`/`movestogo` + `stop`.
 5. **Pondering** — `go ponder` / `ponderhit` + the `Ponder` option.
-6. **Options** — Hash, Threads, SyzygyPath, OwnBook/BookFile, MultiPV, Move Overhead.
+6. **Options** — Hash, Threads, SyzygyPath, OwnBook/BookFile, Move Overhead.
 7. **Hardening** — cutechess gauntlet, GUI testing, full WinBoard/native regression pass.
 
 ## Conventions & gotchas

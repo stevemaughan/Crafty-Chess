@@ -4,6 +4,8 @@
 
 static const char uci_start_fen[] =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+static int uci_move_overhead = 0;       /* centiseconds, from "Move Overhead" */
+static char uci_book_file[256] = "";     /* path from "BookFile" */
 /*
  *******************************************************************************
  *                                                                             *
@@ -28,6 +30,7 @@ static const char uci_start_fen[] =
  *  ("White(1): ") with no trailing newline.
  */
 #define UCI_DEFAULT_DEPTH 8
+#define UCI_PONDER_FALLBACK 500          /* cs; bounds a clock-less go ponder */
 
 /*
  *  UCIMove() converts an internal move to UCI long-algebraic coordinate
@@ -65,7 +68,7 @@ static void UCISetClock(int wtime, int btime, int winc, int binc,
   tc_time_remaining[game_wtm] = mytime;
   tc_time_remaining[Flip(game_wtm)] = opptime;
   tc_increment = myinc;
-  tc_safety_margin = 0;
+  tc_safety_margin = uci_move_overhead;
   if (movestogo > 0) {
     tc_sudden_death = 0;
     tc_moves = movestogo;
@@ -98,6 +101,7 @@ static void UCIGo(int nargs, char *args[]) {
   int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, has_clock = 0;
   int infinite = 0, ponder_flag = 0;
   unsigned saved_noise;
+  FILE *saved_book_file;
   char movestr[8];
 
   search_depth = 0;
@@ -126,10 +130,12 @@ static void UCIGo(int nargs, char *args[]) {
   }
   if (search_depth == 0 && search_time_limit == 0) {
     if (infinite)
-      ;                         /* pondering=1 below makes the search run until stop */
+      ;
     else if (has_clock)
       UCISetClock(wtime, btime, winc, binc, movestogo);
-    else if (!ponder_flag)
+    else if (ponder_flag)
+      search_time_limit = UCI_PONDER_FALLBACK;
+    else
       search_depth = UCI_DEFAULT_DEPTH;
   }
 /*
@@ -152,7 +158,11 @@ static void UCIGo(int nargs, char *args[]) {
   last_pv.pathl = 0;
   display = tree->position;
   tree->status[1] = tree->status[0];
+  saved_book_file = book_file;
+  if (infinite || ponder_flag)
+    book_file = 0;                 /* analysis: search, don't return a book move */
   Iterate(game_wtm, think, 0);
+  book_file = saved_book_file;
   thinking = 0;
   pondering = 0;
   display_options = saved_display_options;
@@ -281,10 +291,105 @@ static void UCISendId(void) {
   printf("option name SyzygyPath type string default <empty>\n");
   printf("option name OwnBook type check default false\n");
   printf("option name BookFile type string default book.bin\n");
-  printf("option name MultiPV type spin default 1 min 1 max 256\n");
   printf("option name Move Overhead type spin default 30 min 0 max 5000\n");
   printf("uciok\n");
   fflush(stdout);
+}
+
+/*
+ *  UCIOpenBook() (re)opens the opening book named by uci_book_file as book_file.
+ *  Closing it (path empty) disables the book — Book() returns 0 when book_file
+ *  is NULL.  The optional start-weights file (books_file) is left as-is.
+ */
+static void UCIOpenBook(void) {
+  if (book_file) {
+    fclose(book_file);
+    book_file = 0;
+  }
+  if (uci_book_file[0]) {
+    book_file = fopen(uci_book_file, "rb+");
+    if (!book_file)
+      book_file = fopen(uci_book_file, "rb");
+  }
+}
+
+/*
+ *  UCISetOption() handles "setoption name <name> value <value>".  The name may
+ *  contain spaces (e.g. "Move Overhead"); it is the tokens between "name" and
+ *  "value".  Simple options set a global; subsystem options (Hash, Threads) are
+ *  delegated to Crafty's native commands via Option() with output suppressed.
+ *  Unknown options are ignored, per the UCI specification.
+ */
+static void UCISetOption(int nargs, char *args[]) {
+  TREE *const tree = block[0];
+  int i, ni = -1, vi = -1, saved_display_options;
+  char name[128], value[256];
+
+  for (i = 1; i < nargs; i++) {
+    if (ni < 0 && !strcmp(args[i], "name"))
+      ni = i + 1;
+    else if (!strcmp(args[i], "value")) {
+      vi = i;
+      break;
+    }
+  }
+  if (ni < 0)
+    return;
+  name[0] = 0;
+  for (i = ni; i < ((vi < 0) ? nargs : vi); i++) {
+    if (i > ni)
+      strncat(name, " ", sizeof(name) - strlen(name) - 1);
+    strncat(name, args[i], sizeof(name) - strlen(name) - 1);
+  }
+  value[0] = 0;
+  for (i = vi + 1; vi >= 0 && i < nargs; i++) {
+    if (i > vi + 1)
+      strncat(value, " ", sizeof(value) - strlen(value) - 1);
+    strncat(value, args[i], sizeof(value) - strlen(value) - 1);
+  }
+  saved_display_options = display_options;
+  if (!strcmp(name, "Ponder"))
+    ponder = (!strcmp(value, "true")) ? 1 : 0;
+  else if (!strcmp(name, "Move Overhead"))
+    uci_move_overhead = atoi(value) / 10;
+  else if (!strcmp(name, "Hash")) {
+    display_options = 0;
+    { int mb = atoi(value); if (mb < 1) mb = 1;
+      sprintf(buffer, "hash %dM", mb); }
+    Option(tree);
+  } else if (!strcmp(name, "Threads")) {
+    int n = atoi(value);
+
+    if (n < 1)
+      n = 1;
+    if (n > CPUS)
+      n = CPUS;
+    display_options = 0;
+    /* Crafty's mt command rejects 1 (must be 0=disabled or >1); map 1->0 */
+    sprintf(buffer, "mt %d", (n == 1) ? 0 : n);
+    Option(tree);
+  } else if (!strcmp(name, "SyzygyPath")) {
+    strncpy(tb_path, value, sizeof(tb_path) - 1);
+    tb_path[sizeof(tb_path) - 1] = 0;
+#if defined(SYZYGY)
+    display_options = 0;
+    strcpy(buffer, "egtb on");
+    Option(tree);
+#endif
+  } else if (!strcmp(name, "OwnBook")) {
+    if (!strcmp(value, "true"))
+      UCIOpenBook();
+    else if (book_file) {
+      fclose(book_file);
+      book_file = 0;
+    }
+  } else if (!strcmp(name, "BookFile")) {
+    strncpy(uci_book_file, value, sizeof(uci_book_file) - 1);
+    uci_book_file[sizeof(uci_book_file) - 1] = 0;
+    if (book_file)                       /* a book is open: switch to the new file */
+      UCIOpenBook();
+  }
+  display_options = saved_display_options;
 }
 
 void UCI(void) {
@@ -304,6 +409,8 @@ void UCI(void) {
       printf("readyok\n");
       fflush(stdout);
     }
+    else if (!strcmp(args[0], "setoption"))
+      UCISetOption(nargs, args);
     else if (!strcmp(args[0], "position"))
       UCIPosition(nargs, args);
     else if (!strcmp(args[0], "go"))
