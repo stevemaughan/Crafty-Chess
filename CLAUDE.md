@@ -131,15 +131,17 @@ king-move coordinates.
 - **Manual GUI load** (Arena / Cute Chess / Nibbler).
 - **Regression guard**: WinBoard and native console modes must still behave as before.
 
-## Roadmap (incremental — each phase independently testable)
+## Roadmap — ✅ COMPLETE (all 7 phases done, merged, and validated)
 
-1. **Skeleton** — mode detection, `uci`/`isready`/`quit` handshake, option enumeration.
-2. **Search plumbing** — `position` parsing + `go depth`/`movetime` fixed search → `bestmove`.
-3. **Info output** — translate PV/score/depth/nodes to `info` lines.
-4. **Time control** — `wtime`/`btime`/`winc`/`binc`/`movestogo` + `stop`.
-5. **Pondering** — `go ponder` / `ponderhit` + the `Ponder` option.
-6. **Options** — Hash, Threads, SyzygyPath, OwnBook/BookFile, Move Overhead.
-7. **Hardening** — cutechess gauntlet, GUI testing, full WinBoard/native regression pass.
+1. ✅ **Skeleton** — mode detection, `uci`/`isready`/`quit` handshake, option enumeration.
+2. ✅ **Search plumbing** — `position` parsing + `go depth`/`movetime` fixed search → `bestmove`.
+3. ✅ **Info output** — `info depth/score(cp|mate)/nodes/nps/time/pv` streamed per iteration.
+4. ✅ **Time control** — `wtime`/`btime`/`winc`/`binc`/`movestogo`, `stop`, `go infinite`.
+5. ✅ **Pondering** — `go ponder` / `ponderhit`, `bestmove … ponder …`.
+6. ✅ **Options** — Hash, Threads, SyzygyPath, OwnBook/BookFile, Move Overhead (MultiPV dropped — Crafty has no multi-PV).
+7. ✅ **Hardening** — fastchess self-play gauntlets (50-game stability + fast-TC stress, all clean after fixing the Move Overhead default 0→30 ms), native/xboard/UCI regression pass.
+
+**Status:** Crafty now speaks UCI (auto-detected from the first stdin token) alongside the unchanged WinBoard and native console interfaces. All UCI code lives in [source/uci.c](source/uci.c) plus small mode-gated hooks in `option.c`/`main.c` (detect `uci`), `utility.c` (`DisplayPV`→UCI info; `CheckInput` piped stdin), `interrupt.c` (`stop`/`isready`/`quit`/`ponderhit` mid-search), and `iterate.c` (one `!uci_mode` guard). Transcript tests: [tests/uci/run_tests.sh](tests/uci/run_tests.sh) (50 assertions, `timeout`-guarded). Self-play harness: [tests/gauntlet/run_gauntlet.sh](tests/gauntlet/run_gauntlet.sh) (needs fastchess or cutechess-cli).
 
 ## Conventions & gotchas
 
