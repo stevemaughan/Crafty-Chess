@@ -49,7 +49,6 @@ expect "option Ponder"        'uci\nquit\n' '^option name Ponder type check defa
 expect "option SyzygyPath"    'uci\nquit\n' '^option name SyzygyPath type string'
 expect "option OwnBook"       'uci\nquit\n' '^option name OwnBook type check default false'
 expect "option BookFile"      'uci\nquit\n' '^option name BookFile type string'
-expect "option MultiPV"       'uci\nquit\n' '^option name MultiPV type spin default 1 min 1 max 256'
 expect "option Move Overhead" 'uci\nquit\n' '^option name Move Overhead type spin default 30 min 0 max 5000'
 
 # --- Task 1 (Phase 2): go / bestmove on the start position ---
@@ -106,5 +105,11 @@ expect "bestmove includes a ponder move" 'uci\nposition startpos\ngo depth 8\nqu
 # --- Phase 5 Task 2: go ponder + ponderhit ---
 expect "go ponder then stop -> bestmove"                  'uci\nposition startpos\ngo ponder wtime 2000 btime 2000\nstop\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 expect "ponderhit converts ponder to a timed search"      'uci\nposition startpos\ngo ponder wtime 2000 btime 2000\nponderhit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+
+# --- Phase 6 Task 1: setoption (Ponder, Move Overhead) + drop MultiPV ---
+reject "MultiPV no longer advertised"               'uci\nquit\n' '^option name MultiPV'
+expect "setoption Ponder accepted, engine still plays" 'uci\nsetoption name Ponder value false\nposition startpos\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "setoption Move Overhead accepted"             'uci\nsetoption name Move Overhead value 50\nposition startpos\ngo wtime 2000 btime 2000\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+expect "clock-less go ponder + ponderhit terminates"  'uci\nposition startpos\ngo ponder\nponderhit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 
 exit $fail

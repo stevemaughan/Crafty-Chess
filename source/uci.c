@@ -4,6 +4,7 @@
 
 static const char uci_start_fen[] =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+static int uci_move_overhead = 0;       /* centiseconds, from "Move Overhead" */
 /*
  *******************************************************************************
  *                                                                             *
@@ -28,6 +29,7 @@ static const char uci_start_fen[] =
  *  ("White(1): ") with no trailing newline.
  */
 #define UCI_DEFAULT_DEPTH 8
+#define UCI_PONDER_FALLBACK 500          /* cs; bounds a clock-less go ponder */
 
 /*
  *  UCIMove() converts an internal move to UCI long-algebraic coordinate
@@ -65,7 +67,7 @@ static void UCISetClock(int wtime, int btime, int winc, int binc,
   tc_time_remaining[game_wtm] = mytime;
   tc_time_remaining[Flip(game_wtm)] = opptime;
   tc_increment = myinc;
-  tc_safety_margin = 0;
+  tc_safety_margin = uci_move_overhead;
   if (movestogo > 0) {
     tc_sudden_death = 0;
     tc_moves = movestogo;
@@ -126,10 +128,12 @@ static void UCIGo(int nargs, char *args[]) {
   }
   if (search_depth == 0 && search_time_limit == 0) {
     if (infinite)
-      ;                         /* pondering=1 below makes the search run until stop */
+      ;
     else if (has_clock)
       UCISetClock(wtime, btime, winc, binc, movestogo);
-    else if (!ponder_flag)
+    else if (ponder_flag)
+      search_time_limit = UCI_PONDER_FALLBACK;
+    else
       search_depth = UCI_DEFAULT_DEPTH;
   }
 /*
@@ -281,10 +285,52 @@ static void UCISendId(void) {
   printf("option name SyzygyPath type string default <empty>\n");
   printf("option name OwnBook type check default false\n");
   printf("option name BookFile type string default book.bin\n");
-  printf("option name MultiPV type spin default 1 min 1 max 256\n");
   printf("option name Move Overhead type spin default 30 min 0 max 5000\n");
   printf("uciok\n");
   fflush(stdout);
+}
+
+/*
+ *  UCISetOption() handles "setoption name <name> value <value>".  The name may
+ *  contain spaces (e.g. "Move Overhead"); it is the tokens between "name" and
+ *  "value".  Simple options set a global; subsystem options (Hash, Threads) are
+ *  delegated to Crafty's native commands via Option() with output suppressed.
+ *  Unknown options are ignored, per the UCI specification.
+ */
+static void UCISetOption(int nargs, char *args[]) {
+  TREE *const tree = block[0];
+  int i, ni = -1, vi = -1, saved_display_options;
+  char name[128], value[256];
+
+  for (i = 1; i < nargs; i++) {
+    if (ni < 0 && !strcmp(args[i], "name"))
+      ni = i + 1;
+    else if (!strcmp(args[i], "value")) {
+      vi = i;
+      break;
+    }
+  }
+  if (ni < 0)
+    return;
+  name[0] = 0;
+  for (i = ni; i < ((vi < 0) ? nargs : vi); i++) {
+    if (i > ni)
+      strncat(name, " ", sizeof(name) - strlen(name) - 1);
+    strncat(name, args[i], sizeof(name) - strlen(name) - 1);
+  }
+  value[0] = 0;
+  for (i = vi + 1; vi >= 0 && i < nargs; i++) {
+    if (i > vi + 1)
+      strncat(value, " ", sizeof(value) - strlen(value) - 1);
+    strncat(value, args[i], sizeof(value) - strlen(value) - 1);
+  }
+  saved_display_options = display_options;
+  if (!strcmp(name, "Ponder"))
+    ponder = (!strcmp(value, "true")) ? 1 : 0;
+  else if (!strcmp(name, "Move Overhead"))
+    uci_move_overhead = atoi(value) / 10;
+  /* (Hash, Threads, SyzygyPath added in Task 2; OwnBook/BookFile in Task 3) */
+  display_options = saved_display_options;
 }
 
 void UCI(void) {
@@ -304,6 +350,8 @@ void UCI(void) {
       printf("readyok\n");
       fflush(stdout);
     }
+    else if (!strcmp(args[0], "setoption"))
+      UCISetOption(nargs, args);
     else if (!strcmp(args[0], "position"))
       UCIPosition(nargs, args);
     else if (!strcmp(args[0], "go"))
