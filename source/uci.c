@@ -354,7 +354,8 @@ static void UCISetOption(int nargs, char *args[]) {
     uci_move_overhead = atoi(value) / 10;
   else if (!strcmp(name, "Hash")) {
     display_options = 0;
-    sprintf(buffer, "hash %dM", atoi(value));
+    { int mb = atoi(value); if (mb < 1) mb = 1;
+      sprintf(buffer, "hash %dM", mb); }
     Option(tree);
   } else if (!strcmp(name, "Threads")) {
     int n = atoi(value);
@@ -372,7 +373,7 @@ static void UCISetOption(int nargs, char *args[]) {
     tb_path[sizeof(tb_path) - 1] = 0;
 #if defined(SYZYGY)
     display_options = 0;
-    strcpy(buffer, "egtb");
+    strcpy(buffer, "egtb on");
     Option(tree);
 #endif
   } else if (!strcmp(name, "OwnBook")) {
