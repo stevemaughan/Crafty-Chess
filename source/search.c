@@ -59,6 +59,8 @@ int Search(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
   }
   if (ply >= MAXPLY - 1)
     return beta;
+  if (ply > selective_depth)         /* track max search depth for UCI seldepth */
+    selective_depth = ply;
 /*
  ************************************************************
  *                                                          *

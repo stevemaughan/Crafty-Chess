@@ -554,7 +554,8 @@ int book_search_trigger = 20;
 int learn = 1;
 int learning = 100;
 int learn_value = 0;
-int abort_search;      /*  1 = abort / print stats, 2 = abort no print stats */
+volatile int abort_search;      /*  1 = abort / print stats, 2 = abort no print stats */
+int selective_depth;            /*  max ply reached this search (UCI seldepth)    */
 int iteration;
 int root_wtm = 1;
 int last_root_value;
@@ -564,7 +565,7 @@ int difficulty;
 int absolute_time_limit;
 int search_time_limit;
 int burp;
-int quit = 0;
+volatile int quit = 0;
 unsigned opponent_start_time, opponent_end_time;
 unsigned program_start_time, program_end_time;
 unsigned start_time, end_time;
