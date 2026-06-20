@@ -4,7 +4,8 @@
 
 static const char uci_start_fen[] =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
-static int uci_move_overhead = 0;       /* centiseconds, from "Move Overhead" */
+static int uci_move_overhead = 3;       /* centiseconds (30ms); matches the advertised
+                                           "Move Overhead" default and buffers flag-fall */
 static char uci_book_file[256] = "";     /* path from "BookFile" */
 /*
  *******************************************************************************
