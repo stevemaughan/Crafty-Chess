@@ -432,6 +432,14 @@ int NextRootMove(TREE * RESTRICT tree, TREE * RESTRICT mytree, int side) {
       tree->curmv[1] = root_moves[which].move;
       root_moves[which].status |= 8;
 /*
+ *  In UCI mode, tell the GUI which root move we are about to search.  Only the
+ *  master thread reports, and only after ~1s of search, so quick/shallow
+ *  iterations are not flooded with currmove lines.
+ */
+      if (uci_mode && mytree->thread_id == 0 &&
+          ReadClock() - start_time > 100)
+        UCICurrMove(iteration, root_moves[which].move, which + 1);
+/*
  ************************************************************
  *                                                          *
  *  We have found a move to search.  If appropriate, we     *

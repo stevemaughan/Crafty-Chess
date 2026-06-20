@@ -345,6 +345,20 @@ void UCIInfo(int wtm, int etime, PATH *pv) {
   fflush(stdout);
 }
 
+/*
+ *  UCICurrMove() emits the UCI "currmove"/"currmovenumber" info, telling the
+ *  GUI which root move is being searched and its index in the root move list.
+ *  It is called from NextRootMove(); the caller only invokes it once the search
+ *  has run for ~1s, so quick searches are never flooded with these lines.
+ */
+void UCICurrMove(int depth, int move, int movenumber) {
+  char mv[8];
+
+  UCIMove(move, mv);
+  printf("info depth %d currmove %s currmovenumber %d\n", depth, mv, movenumber);
+  fflush(stdout);
+}
+
 static void UCISendId(void) {
   printf("\nid name Crafty %s\n", version);
   printf("id author Robert Hyatt\n");

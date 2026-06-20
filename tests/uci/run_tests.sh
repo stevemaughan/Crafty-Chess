@@ -31,6 +31,20 @@ reject() {
   fi
 }
 
+# expect_count_le <description> <transcript> <pattern> <max> — assert the number
+# of output lines matching <pattern> is <= <max>.
+expect_count_le() {
+  desc=$1; transcript=$2; pattern=$3; max=$4
+  out=$(printf '%b' "$transcript" | timeout 30 "$ENGINE" 2>/dev/null)
+  c=$(printf '%s\n' "$out" | grep -Ec "$pattern")
+  if [ "$c" -le "$max" ]; then
+    echo "PASS: $desc ($c <= $max)"
+  else
+    echo "FAIL: $desc -- $c matches > $max for /$pattern/"
+    fail=1
+  fi
+}
+
 # expect_order <description> <transcript> <first-pattern> <second-pattern> —
 # assert the first line matching <first-pattern> occurs BEFORE the first line
 # matching <second-pattern> (both must be present).
@@ -94,6 +108,17 @@ expect "bestmove still follows the info"      'uci\nposition startpos\ngo depth 
 
 # --- seldepth: selective (max) search depth, reported after depth ---
 expect "info line includes seldepth >= depth" 'uci\nposition startpos\ngo depth 8\nquit\n' '^info depth 8 seldepth [0-9]+ score cp '
+
+# --- verbosity: exactly one PV per depth (no end-of-ply duplicate) ---
+# A depth-10 search should stream ~one PV info line per depth (plus the odd
+# best-move change), not two (the old code printed an end-of-iteration copy).
+expect_count_le "no duplicate end-of-ply PV lines" 'uci\nposition startpos\ngo depth 10\nquit\n' '^info depth [0-9]+ seldepth' 16
+
+# --- currmove: report the root move currently being searched (after ~1s) ---
+# No trailing "quit": piped input is read mid-search and would abort it before
+# the ~1s currmove threshold.  The engine exits on EOF after bestmove instead
+# (as a real GUI sends nothing until bestmove arrives).
+expect "currmove reported on a longer search" 'uci\nposition startpos\ngo movetime 2000\n' '^info depth [0-9]+ currmove [a-h][1-8][a-h][1-8][nbrq]? currmovenumber [0-9]+'
 
 # --- Phase 3 Task 2: mate scores ---
 # Fool's mate, Black to move: Qd8-h4 is mate in 1.

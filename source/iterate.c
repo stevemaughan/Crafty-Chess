@@ -523,7 +523,7 @@ int Iterate(int wtm, int search_type, int root_list_done) {
           nodes_per_second = 1000000;
         tree->pv[0] = root_moves[0].path;
         if (!abort_search && value != -(MATE - 1)) {
-          if (end_time - start_time >= noise_level) {
+          if (!uci_mode && end_time - start_time >= noise_level) {
             DisplayPV(tree, 5, wtm, end_time - start_time, &tree->pv[0],
                 force_print);
             noise_block = 0;
@@ -591,7 +591,7 @@ int Iterate(int wtm, int search_type, int root_list_done) {
             (uint64_t) tree->nodes_searched * 100 / Max((uint64_t) end_time -
             start_time, 1);
       if (abort_search != 2 && !puzzling) {
-        if (noise_block)
+        if (noise_block && !uci_mode)
           DisplayPV(tree, 5, wtm, end_time - start_time, &tree->pv[0], 1);
         tree->evaluations = (tree->evaluations) ? tree->evaluations : 1;
         tree->fail_highs++;
