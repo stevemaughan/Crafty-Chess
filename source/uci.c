@@ -5,6 +5,7 @@
 static const char uci_start_fen[] =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 static int uci_move_overhead = 0;       /* centiseconds, from "Move Overhead" */
+static char uci_book_file[256] = "";     /* path from "BookFile" */
 /*
  *******************************************************************************
  *                                                                             *
@@ -135,6 +136,20 @@ static void UCIGo(int nargs, char *args[]) {
       search_time_limit = UCI_PONDER_FALLBACK;
     else
       search_depth = UCI_DEFAULT_DEPTH;
+  }
+/*
+ *  If an opening book is loaded and this is a real move request (not ponder /
+ *  infinite analysis), try a book move first and skip the search if found.
+ */
+  if (book_file && !infinite && !ponder_flag) {
+    if (Book(tree, game_wtm) && tree->pv[0].path[1]) {
+      char bmove[8];
+
+      UCIMove(tree->pv[0].path[1], bmove);
+      printf("bestmove %s\n", bmove);
+      fflush(stdout);
+      return;
+    }
   }
 /*
  *  Suppress Crafty's native streaming search output while we search.
@@ -291,6 +306,23 @@ static void UCISendId(void) {
 }
 
 /*
+ *  UCIOpenBook() (re)opens the opening book named by uci_book_file as book_file.
+ *  Closing it (path empty) disables the book — Book() returns 0 when book_file
+ *  is NULL.  The optional start-weights file (books_file) is left as-is.
+ */
+static void UCIOpenBook(void) {
+  if (book_file) {
+    fclose(book_file);
+    book_file = 0;
+  }
+  if (uci_book_file[0]) {
+    book_file = fopen(uci_book_file, "rb+");
+    if (!book_file)
+      book_file = fopen(uci_book_file, "rb");
+  }
+}
+
+/*
  *  UCISetOption() handles "setoption name <name> value <value>".  The name may
  *  contain spaces (e.g. "Move Overhead"); it is the tokens between "name" and
  *  "value".  Simple options set a global; subsystem options (Hash, Threads) are
@@ -352,6 +384,18 @@ static void UCISetOption(int nargs, char *args[]) {
     strcpy(buffer, "egtb");
     Option(tree);
 #endif
+  } else if (!strcmp(name, "OwnBook")) {
+    if (!strcmp(value, "true"))
+      UCIOpenBook();
+    else if (book_file) {
+      fclose(book_file);
+      book_file = 0;
+    }
+  } else if (!strcmp(name, "BookFile")) {
+    strncpy(uci_book_file, value, sizeof(uci_book_file) - 1);
+    uci_book_file[sizeof(uci_book_file) - 1] = 0;
+    if (book_file)                       /* a book is open: switch to the new file */
+      UCIOpenBook();
   }
   display_options = saved_display_options;
 }

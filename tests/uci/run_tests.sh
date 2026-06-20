@@ -118,4 +118,9 @@ expect "setoption Threads accepted, engine still plays"  'uci\nsetoption name Th
 expect "setoption SyzygyPath accepted, engine still plays" 'uci\nsetoption name SyzygyPath value C:/tb\nposition startpos\ngo depth 6\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 reject "setoption emits no stray output before bestmove" 'uci\nsetoption name Hash value 64\nsetoption name Threads value 1\nquit\n' 'hash|threads|error|ERROR'
 
+# --- Phase 6 Task 3: OwnBook / BookFile ---
+expect "OwnBook off -> engine searches"           'uci\nposition startpos\ngo depth 6\nquit\n' '^info depth'
+expect "OwnBook on + book -> bestmove"            'uci\nsetoption name BookFile value books/book.bin\nsetoption name OwnBook value true\nposition startpos\ngo wtime 5000 btime 5000\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+reject "book move skips the search"               'uci\nsetoption name BookFile value books/book.bin\nsetoption name OwnBook value true\nposition startpos\ngo wtime 5000 btime 5000\nquit\n' '^info depth'
+
 exit $fail
