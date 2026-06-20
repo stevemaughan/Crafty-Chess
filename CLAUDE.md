@@ -3,7 +3,8 @@
 ## What this project is
 
 This is a fork of **Crafty**, the classic open-source chess engine written by Robert (Bob) Hyatt.
-The source in this repo is **Crafty v25.2** (see `VERSION` in [data.c](source/data.c#L445)).
+The source in this repo is **Crafty v25.2.1** — a UCI-enabled build of upstream Crafty 25.2; the
+`.1` denotes the UCI conversion (see `VERSION` in [data.c](source/data.c#L445)).
 
 Crafty is a strong, full-featured engine, but it only speaks the **WinBoard/xboard** protocol
 (plus its own native console command set). It does **not** support **UCI** (Universal Chess
