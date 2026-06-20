@@ -123,4 +123,7 @@ expect "OwnBook off -> engine searches"           'uci\nposition startpos\ngo de
 expect "OwnBook on + book -> bestmove"            'uci\nsetoption name BookFile value books/book.bin\nsetoption name OwnBook value true\nposition startpos\ngo wtime 5000 btime 5000\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 reject "book move skips the search"               'uci\nsetoption name BookFile value books/book.bin\nsetoption name OwnBook value true\nposition startpos\ngo wtime 5000 btime 5000\nquit\n' '^info depth'
 
+# --- Phase 6 Task 3 fix: book must NOT short-circuit analysis ---
+expect "go infinite + book still analyzes (info streamed)" 'uci\nsetoption name BookFile value books/book.bin\nsetoption name OwnBook value true\nposition startpos\ngo infinite\nstop\nquit\n' '^info depth'
+
 exit $fail

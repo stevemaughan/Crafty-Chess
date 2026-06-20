@@ -101,6 +101,7 @@ static void UCIGo(int nargs, char *args[]) {
   int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, has_clock = 0;
   int infinite = 0, ponder_flag = 0;
   unsigned saved_noise;
+  FILE *saved_book_file;
   char movestr[8];
 
   search_depth = 0;
@@ -138,20 +139,6 @@ static void UCIGo(int nargs, char *args[]) {
       search_depth = UCI_DEFAULT_DEPTH;
   }
 /*
- *  If an opening book is loaded and this is a real move request (not ponder /
- *  infinite analysis), try a book move first and skip the search if found.
- */
-  if (book_file && !infinite && !ponder_flag) {
-    if (Book(tree, game_wtm) && tree->pv[0].path[1]) {
-      char bmove[8];
-
-      UCIMove(tree->pv[0].path[1], bmove);
-      printf("bestmove %s\n", bmove);
-      fflush(stdout);
-      return;
-    }
-  }
-/*
  *  Suppress Crafty's native streaming search output while we search.
  */
   saved_display_options = display_options;
@@ -171,7 +158,11 @@ static void UCIGo(int nargs, char *args[]) {
   last_pv.pathl = 0;
   display = tree->position;
   tree->status[1] = tree->status[0];
+  saved_book_file = book_file;
+  if (infinite || ponder_flag)
+    book_file = 0;                 /* analysis: search, don't return a book move */
   Iterate(game_wtm, think, 0);
+  book_file = saved_book_file;
   thinking = 0;
   pondering = 0;
   display_options = saved_display_options;
