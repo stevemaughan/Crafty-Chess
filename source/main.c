@@ -4575,9 +4575,11 @@ int main(int argc, char **argv) {
  ************************************************************
  */
       if (result == 0) {
-        fseek(history_file, ((move_number - 1) * 2 + 1 - game_wtm) * 10,
-            SEEK_SET);
-        fprintf(history_file, "%9s\n", OutputMove(tree, 0, game_wtm, move));
+        if (history_file) {
+          fseek(history_file, ((move_number - 1) * 2 + 1 - game_wtm) * 10,
+              SEEK_SET);
+          fprintf(history_file, "%9s\n", OutputMove(tree, 0, game_wtm, move));
+        }
         MakeMoveRoot(tree, game_wtm, move);
         tree->curmv[0] = move;
         time_used_opponent = opponent_end_time - opponent_start_time;
@@ -4828,10 +4830,12 @@ int main(int argc, char **argv) {
       time_used = program_end_time - program_start_time;
       Print(1, "              time used: %s\n", DisplayTime(time_used));
       TimeAdjust(game_wtm, time_used);
-      fseek(history_file, ((move_number - 1) * 2 + 1 - game_wtm) * 10,
-          SEEK_SET);
-      fprintf(history_file, "%9s\n", OutputMove(tree, 0, game_wtm,
-              last_pv.path[1]));
+      if (history_file) {
+        fseek(history_file, ((move_number - 1) * 2 + 1 - game_wtm) * 10,
+            SEEK_SET);
+        fprintf(history_file, "%9s\n", OutputMove(tree, 0, game_wtm,
+                last_pv.path[1]));
+      }
       last_search_value = value;
       if (kibitz) {
         if (kibitz_depth)

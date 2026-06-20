@@ -183,4 +183,21 @@ reject "no half-move clock -> not a 50-move draw" 'uci\nposition fen 7k/8/8/8/8/
 # readyok answered while waiting must precede the bestmove.
 expect_order "go infinite holds bestmove until stop (mate found)" 'uci\nposition fen rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2\ngo infinite\nisready\nstop\nquit\n' '^readyok' '^bestmove'
 
+# --- the engine must not create log.NNN / game.NNN files in its working dir ---
+no_logfiles() {
+  desc="no log.NNN/game.NNN files created on run"
+  eng=$(cd "$(dirname "$ENGINE")" 2>/dev/null && pwd)/$(basename "$ENGINE")
+  d="/tmp/crafty-nolog-$$"; rm -rf "$d"; mkdir -p "$d"
+  ( cd "$d" && printf 'uci\nposition startpos\ngo depth 6\nquit\n' | timeout 30 "$eng" >/dev/null 2>&1 )
+  n=$(ls "$d"/log.* "$d"/game.* 2>/dev/null | wc -l)
+  if [ "$n" -eq 0 ]; then
+    echo "PASS: $desc"
+  else
+    echo "FAIL: $desc -- $n file(s) created"
+    fail=1
+  fi
+  rm -rf "$d"
+}
+no_logfiles
+
 exit $fail

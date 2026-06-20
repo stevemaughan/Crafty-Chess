@@ -2520,9 +2520,11 @@ int Option(TREE * RESTRICT tree) {
           if (!(move_number % 8) && Flip(game_wtm))
             printf("\n");
         }
-        fseek(history_file, ((move_number - 1) * 2 + 1 - game_wtm) * 10,
-            SEEK_SET);
-        fprintf(history_file, "%9s\n", OutputMove(tree, 0, game_wtm, move));
+        if (history_file) {
+          fseek(history_file, ((move_number - 1) * 2 + 1 - game_wtm) * 10,
+              SEEK_SET);
+          fprintf(history_file, "%9s\n", OutputMove(tree, 0, game_wtm, move));
+        }
         MakeMoveRoot(tree, game_wtm, move);
         TimeAdjust(game_wtm, 0);
 #if defined(DEBUG)
@@ -2735,6 +2737,10 @@ int Option(TREE * RESTRICT tree) {
     int i, more, swtm;
     char input[128], text[128], *next;
 
+    if (!history_file) {
+      Print(4095, "savegame unavailable: game history file is disabled.\n");
+      return 1;
+    }
     output_file = stdout;
     secs = time(0);
     timestruct = localtime((time_t *) & secs);

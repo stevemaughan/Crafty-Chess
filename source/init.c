@@ -84,12 +84,14 @@ void Initialize() {
   id = InitializeGetLogID();
   sprintf(log_filename, "%s/log.%03d", log_path, id);
   sprintf(history_filename, "%s/game.%03d", log_path, id);
-  log_file = fopen(log_filename, "w");
-  history_file = fopen(history_filename, "w+");
-  if (!history_file) {
-    printf("ERROR, unable to open game history file, exiting\n");
-    CraftyExit(1);
-  }
+/*
+ *  Do not create the log.NNN / game.NNN files by default -- they would clutter
+ *  the working directory on every run.  They are left closed; UCI never uses
+ *  them, native/WinBoard accesses are all guarded with "if (history_file)", and
+ *  the "log on" command re-creates them on demand for debugging.
+ */
+  log_file = 0;
+  history_file = 0;
   AlignedMalloc((void *) &hash_table, 64,
       sizeof(HASH_ENTRY) * hash_table_size);
   AlignedMalloc((void *) &hash_path, 64,
