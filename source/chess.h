@@ -379,6 +379,7 @@ void DisplayFail(TREE *RESTRICT, int, int, int, int, int, int, int);
 char *DisplayPath(TREE *RESTRICT, int, PATH *);
 void DisplayPV(TREE *RESTRICT, int, int, int, PATH *, int);
 void UCIInfo(int, int, PATH *);
+void UCICurrMove(int, int, int);
 char *DisplayTime(unsigned);
 char *Display2Times(unsigned);
 char *DisplayTimeKibitz(unsigned);
