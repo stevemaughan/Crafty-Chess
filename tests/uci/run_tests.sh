@@ -31,6 +31,22 @@ reject() {
   fi
 }
 
+# expect_order <description> <transcript> <first-pattern> <second-pattern> —
+# assert the first line matching <first-pattern> occurs BEFORE the first line
+# matching <second-pattern> (both must be present).
+expect_order() {
+  desc=$1; transcript=$2; first=$3; second=$4
+  out=$(printf '%b' "$transcript" | timeout 30 "$ENGINE" 2>/dev/null)
+  fline=$(printf '%s\n' "$out" | grep -nE "$first"  | head -1 | cut -d: -f1)
+  sline=$(printf '%s\n' "$out" | grep -nE "$second" | head -1 | cut -d: -f1)
+  if [ -n "$fline" ] && [ -n "$sline" ] && [ "$fline" -lt "$sline" ]; then
+    echo "PASS: $desc"
+  else
+    echo "FAIL: $desc -- expected /$first/ before /$second/ (lines: ${fline:-none},${sline:-none})"
+    fail=1
+  fi
+}
+
 # --- Task 1: smoke (engine builds and runs) ---
 expect "engine builds and runs" 'quit\n' 'Crafty v25\.2'
 
@@ -72,24 +88,27 @@ expect "ucinewgame then play works" 'uci\nucinewgame\nposition startpos\ngo dept
 expect "promotion emits lowercase q" 'uci\nposition fen 8/P6k/8/8/8/8/7K/8 w - - 0 1\ngo depth 6\nquit\n' '^bestmove a7a8q'
 
 # --- Phase 3 Task 1: UCI info streaming (cp scores) ---
-expect "info line has all fields + coord pv" 'uci\nposition startpos\ngo depth 8\nquit\n' '^info depth 8 score cp -?[0-9]+ nodes [0-9]+ nps [0-9]+ time [0-9]+ pv [a-h][1-8][a-h][1-8]'
-expect "info streams an early depth too"      'uci\nposition startpos\ngo depth 8\nquit\n' '^info depth 1 score cp '
+expect "info line has all fields + coord pv" 'uci\nposition startpos\ngo depth 8\nquit\n' '^info depth 8 seldepth [0-9]+ score cp -?[0-9]+ nodes [0-9]+ nps [0-9]+ time [0-9]+ pv [a-h][1-8][a-h][1-8]'
+expect "info streams an early depth too"      'uci\nposition startpos\ngo depth 8\nquit\n' '^info depth 1 seldepth [0-9]+ score cp '
 expect "bestmove still follows the info"      'uci\nposition startpos\ngo depth 8\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
+
+# --- seldepth: selective (max) search depth, reported after depth ---
+expect "info line includes seldepth >= depth" 'uci\nposition startpos\ngo depth 8\nquit\n' '^info depth 8 seldepth [0-9]+ score cp '
 
 # --- Phase 3 Task 2: mate scores ---
 # Fool's mate, Black to move: Qd8-h4 is mate in 1.
-expect "mate-in-1 -> score mate 1 with pv d8h4" 'uci\nposition fen rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2\ngo depth 4\nquit\n' '^info depth [0-9]+ score mate 1 .* pv d8h4'
+expect "mate-in-1 -> score mate 1 with pv d8h4" 'uci\nposition fen rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2\ngo depth 4\nquit\n' '^info depth [0-9]+ seldepth [0-9]+ score mate 1.* pv d8h4'
 # Non-mate position still reports cp.
-expect "normal position still uses score cp"    'uci\nposition startpos\ngo depth 6\nquit\n' '^info depth [0-9]+ score cp '
+expect "normal position still uses score cp"    'uci\nposition startpos\ngo depth 6\nquit\n' '^info depth [0-9]+ seldepth [0-9]+ score cp '
 
 # --- Phase 3 hardening: side-to-move score perspective ---
-expect "black-to-move winning -> positive cp" 'uci\nposition fen 3qk3/8/8/8/8/8/8/4K3 b - - 0 1\ngo depth 4\nquit\n' '^info depth [0-9]+ score cp [0-9]'
-expect "black-to-move losing -> negative cp"  'uci\nposition fen 4k3/8/8/8/8/8/8/3QK3 b - - 0 1\ngo depth 4\nquit\n' '^info depth [0-9]+ score cp -[0-9]'
+expect "black-to-move winning -> positive cp" 'uci\nposition fen 3qk3/8/8/8/8/8/8/4K3 b - - 0 1\ngo depth 4\nquit\n' '^info depth [0-9]+ seldepth [0-9]+ score cp [0-9]'
+expect "black-to-move losing -> negative cp"  'uci\nposition fen 4k3/8/8/8/8/8/8/3QK3 b - - 0 1\ngo depth 4\nquit\n' '^info depth [0-9]+ seldepth [0-9]+ score cp -[0-9]'
 
 # --- Phase 4 Task 1: clock-based time control ---
 expect "go wtime/btime (sudden death) -> bestmove" 'uci\nposition startpos\ngo wtime 1000 btime 1000 winc 100 binc 100\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
 expect "go with movestogo -> bestmove"             'uci\nposition startpos\ngo wtime 2000 btime 2000 movestogo 30\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
-expect "clock search still streams info"           'uci\nposition startpos\ngo wtime 2000 btime 2000\nquit\n' '^info depth [0-9]+ score cp '
+expect "clock search still streams info"           'uci\nposition startpos\ngo wtime 2000 btime 2000\nquit\n' '^info depth [0-9]+ seldepth [0-9]+ score cp '
 
 # --- Phase 4 Task 2: stop and go infinite ---
 expect "stop interrupts go infinite -> bestmove"   'uci\nposition startpos\ngo infinite\nstop\nquit\n' '^bestmove [a-h][1-8][a-h][1-8]'
@@ -125,5 +144,18 @@ reject "book move skips the search"               'uci\nsetoption name BookFile 
 
 # --- Phase 6 Task 3 fix: book must NOT short-circuit analysis ---
 expect "go infinite + book still analyzes (info streamed)" 'uci\nsetoption name BookFile value books/book.bin\nsetoption name OwnBook value true\nposition startpos\ngo infinite\nstop\nquit\n' '^info depth'
+
+# --- Bug-fix review M2: FEN half-move clock feeds the 50-move counter ---
+# KR vs K, White to move, half-move clock at 99: any move reaches 100 plies =>
+# 50-move draw, so this (otherwise winning) position must be scored cp 0.
+expect "FEN half-move clock honored (50-move draw -> cp 0)" 'uci\nposition fen 7k/8/8/8/8/8/8/R5K1 w - - 99 60\ngo depth 6\nquit\n' 'score cp 0 '
+# Sanity: with NO half-move clock the same position is a winning KR vs K (not 0).
+reject "no half-move clock -> not a 50-move draw" 'uci\nposition fen 7k/8/8/8/8/8/8/R5K1 w - - 0 1\ngo depth 6\nquit\n' 'info depth 6 score cp 0 '
+
+# --- Bug-fix review M3: go infinite/ponder must not emit bestmove until stop ---
+# Fool's mate (Black to move, Qd8h4#). "go infinite" finds the mate and would
+# self-terminate; UCI forbids returning bestmove until stop/ponderhit, so the
+# readyok answered while waiting must precede the bestmove.
+expect_order "go infinite holds bestmove until stop (mate found)" 'uci\nposition fen rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2\ngo infinite\nisready\nstop\nquit\n' '^readyok' '^bestmove'
 
 exit $fail

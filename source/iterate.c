@@ -74,6 +74,7 @@ int Iterate(int wtm, int search_type, int root_list_done) {
  ************************************************************
  */
   abort_search = 0;
+  selective_depth = 0;
   book_move = 0;
   program_start_time = ReadClock();
   start_time = ReadClock();

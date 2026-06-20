@@ -53,6 +53,8 @@ int Quiesce(TREE * RESTRICT tree, int ply, int wtm, int alpha, int beta,
  */
   if (ply >= MAXPLY - 1)
     return beta;
+  if (ply > selective_depth)         /* track max search depth for UCI seldepth */
+    selective_depth = ply;
 #if defined(NODES)
   if (search_nodes && --temp_search_nodes <= 0) {
     abort_search = 1;
@@ -298,6 +300,8 @@ int QuiesceEvasions(TREE * RESTRICT tree, int ply, int wtm, int alpha,
  */
   if (ply >= MAXPLY - 1)
     return beta;
+  if (ply > selective_depth)         /* track max search depth for UCI seldepth */
+    selective_depth = ply;
 #if defined(NODES)
   if (search_nodes && --temp_search_nodes <= 0) {
     abort_search = 1;

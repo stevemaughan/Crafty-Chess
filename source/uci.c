@@ -87,6 +87,36 @@ static void UCISetClock(int wtime, int btime, int winc, int binc,
 }
 
 /*
+ *  UCIWaitForStop() is used when an infinite or ponder search ends on its own
+ *  (a forced mate, or the maximum iteration) before the GUI has sent "stop" or
+ *  "ponderhit".  UCI forbids emitting "bestmove" until then, so we read and
+ *  discard input until one of stop/ponderhit/quit arrives, still answering
+ *  "isready" while we wait.  Read(1,...) blocks, which is correct here: the
+ *  search is finished and no threads are running.
+ */
+static void UCIWaitForStop(void) {
+  while (FOREVER) {
+    if (Read(1, buffer) < 0) {           /* EOF: treat as quit */
+      quit = 1;
+      return;
+    }
+    nargs = ReadParse(buffer, args, " \t");
+    if (nargs == 0)
+      continue;
+    if (!strcmp(args[0], "stop") || !strcmp(args[0], "ponderhit"))
+      return;
+    if (!strcmp(args[0], "isready")) {
+      printf("readyok\n");
+      fflush(stdout);
+    } else if (!strcmp(args[0], "quit")) {
+      quit = 1;
+      return;
+    }
+    /* any other command is ignored while waiting for stop/ponderhit */
+  }
+}
+
+/*
  *  UCIGo() handles the UCI "go" command.  It parses "depth N" and
  *  "movetime T" (ms); clock parameters (wtime/btime/winc/binc/movestogo) are
  *  mapped to Crafty's time-control globals by UCISetClock(); "infinite" runs
@@ -98,7 +128,7 @@ static void UCISetClock(int wtime, int btime, int winc, int binc,
  */
 static void UCIGo(int nargs, char *args[]) {
   TREE *const tree = block[0];
-  int i, best, saved_display_options, saved_kibitz, saved_post;
+  int i, best, saved_display_options, saved_kibitz, saved_post, hold_for_stop;
   int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, has_clock = 0;
   int infinite = 0, ponder_flag = 0;
   unsigned saved_noise;
@@ -163,6 +193,14 @@ static void UCIGo(int nargs, char *args[]) {
   if (infinite || ponder_flag)
     book_file = 0;                 /* analysis: search, don't return a book move */
   Iterate(game_wtm, think, 0);
+/*
+ *  In infinite/ponder mode the search must NOT return bestmove until the GUI
+ *  sends stop/ponderhit.  If it ended on its own (forced mate or max iteration)
+ *  while still pondering -- no stop set abort_search, and no ponderhit cleared
+ *  "pondering" -- wait for the GUI before reporting.  When stop/ponderhit (or
+ *  quit) already ended the search, fall straight through to the bestmove.
+ */
+  hold_for_stop = (!abort_search && pondering);
   book_file = saved_book_file;
   thinking = 0;
   pondering = 0;
@@ -170,6 +208,8 @@ static void UCIGo(int nargs, char *args[]) {
   kibitz = saved_kibitz;
   post = saved_post;
   noise_level = saved_noise;
+  if (hold_for_stop && !quit)
+    UCIWaitForStop();
 /*
  *  Report the best move (the first move of the principal variation).
  */
@@ -222,6 +262,27 @@ static void UCIPosition(int nargs, char *args[]) {
     fen_args[2] = args[4];
     fen_args[3] = args[5];
     SetBoard(tree, 4, fen_args, 0);
+/*
+ *  Honor the FEN half-move clock (field 5) so the 50-move rule is tracked from
+ *  a mid-game FEN.  SetBoard() reset rep_index/rep_list[0]/Reversible(0); the
+ *  repetition machinery requires rep_index >= Reversible (the 3-fold scan walks
+ *  back Reversible/2 entries), so pad rep_list with sentinel keys (0 never
+ *  equals a real Zobrist signature) and resync rep_index.  A replayed move that
+ *  is irreversible later resets all of this via MakeMoveRoot, as in native play.
+ */
+    if (nargs > 6 && strcmp(args[6], "moves")) {
+      int hm = atoi(args[6]);
+
+      if (hm > 100)               /* >99 plies is already a draw; cap the padding */
+        hm = 100;
+      if (hm > 0) {
+        for (i = 1; i <= hm; i++)
+          tree->rep_list[i] = 0;
+        rep_index = hm;
+        tree->rep_list[rep_index] = HashKey;
+        Reversible(0) = hm;
+      }
+    }
   } else
     return;
   move_number = 1;
@@ -261,16 +322,17 @@ void UCIInfo(int wtm, int etime, PATH *pv) {
   TREE *const tree = block[0];
   uint64_t nodes = tree->nodes_searched;
   uint64_t nps = (etime > 0) ? (nodes * 100 / (uint64_t) etime) : 0;
-  int i, n = 0, score = pv->pathv;
+  int i, n = 0, score = pv->pathv, sd = Max(pv->pathd, selective_depth);
   char line[4096];
 
   if (MateScore(pv->pathv)) {
     int moves = (MATE - Abs(pv->pathv) + 1) / 2;
 
-    n += sprintf(line + n, "info depth %d score mate %d", pv->pathd,
-        (score > 0) ? moves : -moves);
+    n += sprintf(line + n, "info depth %d seldepth %d score mate %d", pv->pathd,
+        sd, (score > 0) ? moves : -moves);
   } else
-    n += sprintf(line + n, "info depth %d score cp %d", pv->pathd, score);
+    n += sprintf(line + n, "info depth %d seldepth %d score cp %d", pv->pathd,
+        sd, score);
   n += sprintf(line + n, " nodes %" PRIu64 " nps %" PRIu64 " time %d pv",
       nodes, nps, etime * 10);
   for (i = 1; i < pv->pathl; i++) {
@@ -395,6 +457,14 @@ static void UCISetOption(int nargs, char *args[]) {
 
 void UCI(void) {
   uci_mode = 1;
+/*
+ *  The "ponder" global defaults to 1 (native Crafty assumes pondering), which
+ *  contradicts the "Ponder type check default false" we advertise and makes the
+ *  sudden-death time formula spend ~30% more per move (÷20 vs ÷26) even when no
+ *  pondering happens.  Match the advertised default; the GUI re-enables it with
+ *  "setoption name Ponder value true" when it actually intends to ponder.
+ */
+  ponder = 0;
   UCISendId();
   while (FOREVER) {
     if (quit)

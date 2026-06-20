@@ -308,7 +308,13 @@ void TimeSet(int search_type) {
       time_limit =
           (average < 2.0 * simple_average) ? average : 2.0 * simple_average;
   }
-  if (tc_increment > 200 && moves_out_of_book < 2)
+/*
+ *  The first-moves-out-of-book bonus relies on moves_out_of_book, which the
+ *  native game loop maintains but the (stateless) UCI path cannot -- every UCI
+ *  "position" resets it to 0, so this would otherwise inflate the target time
+ *  by 20% on every move.  Skip the bonus in UCI mode.
+ */
+  if (tc_increment > 200 && moves_out_of_book < 2 && !uci_mode)
     time_limit *= 1.2;
   if (time_limit <= 0)
     time_limit = 5;
