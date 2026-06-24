@@ -1,8 +1,9 @@
+#include <math.h>
 #include "chess.h"
 #include "data.h"
 #include "epdglue.h"
 #include "tbprobe.h"
-/* last modified 08/03/16 */
+/* last modified 11/10/19 */
 /*
  *******************************************************************************
  *                                                                             *
@@ -45,8 +46,9 @@ int Iterate(int wtm, int search_type, int root_list_done) {
   TREE *const tree = block[0];
   ROOT_MOVE temp_rm;
   int i, alpha, beta, current_rm = 0, force_print = 0;
-  int value = 0, twtm, correct, correct_count, npc, cpl, max;
-  unsigned int idle_time;
+  int value = 0, twtm, correct, correct_count, npc, cpl, max, egtb = 0;
+  static int adjusted = 0;
+  uint32_t idle_time;
   char buff[32];
 #if (CPUS > 1) && defined(UNIX)
   pthread_t pt;
@@ -103,8 +105,8 @@ int Iterate(int wtm, int search_type, int root_list_done) {
   tree->egtb_hits = 0;
   tree->extensions_done = 0;
   tree->qchecks_done = 0;
-  tree->moves_fpruned = 0;
-  tree->moves_mpruned = 0;
+  tree->futility_moves_pruned = 0;
+  tree->late_moves_pruned = 0;
   for (i = 0; i < 16; i++) {
     tree->LMR_done[i] = 0;
     tree->null_done[i] = 0;
@@ -130,7 +132,7 @@ int Iterate(int wtm, int search_type, int root_list_done) {
  */
   if (!root_list_done)
     RootMoveList(wtm);
-  if (booking || (!Book(tree, wtm) && !RootMoveEGTB(wtm)))
+  if (booking || (!Book(tree, wtm) && !(egtb=RootMoveEGTB(wtm))))
     do {
       if (abort_search)
         break;
@@ -388,7 +390,7 @@ int Iterate(int wtm, int search_type, int root_list_done) {
             if ((root_moves[current_rm].status & 2) == 0)
               difficulty = ComputeDifficulty(difficulty, +1);
             root_moves[current_rm].status |= 2;
-            DisplayFail(tree, 1, 5, wtm, end_time - start_time,
+            DisplayFail(tree, 1, wtm, end_time - start_time,
                 root_moves[current_rm].move, value, force_print);
             temp_rm = root_moves[current_rm];
             for (i = current_rm; i > 0; i--)
@@ -432,7 +434,7 @@ int Iterate(int wtm, int search_type, int root_list_done) {
             if ((root_moves[current_rm].status & 1) == 0)
               difficulty = ComputeDifficulty(Max(100, difficulty), -1);
             root_moves[current_rm].status |= 1;
-            DisplayFail(tree, 2, 5, wtm, end_time - start_time,
+            DisplayFail(tree, 2, wtm, end_time - start_time,
                 root_moves[current_rm].move, value, force_print);
           } else
             break;
@@ -535,6 +537,33 @@ int Iterate(int wtm, int search_type, int root_list_done) {
 /*
  ************************************************************
  *                                                          *
+ *  Now it is time to see, if we are playing using an Elo   *
+ *  setting, whether the actual NPS is within 1% of the     *
+ *  target NPS needed to produce the specified Elo.         *
+ *                                                          *
+ ************************************************************
+ */
+#if defined(ELO)
+        if (elo > 3600 || (knps_target * 1000 > 2 * nodes_per_second &&
+                nps_loop <= 4 && ++adjusted > 100))
+          nps_loop = 0;
+        else if (nodes_per_second != 1000000) {
+          float error;
+
+          error =
+              ((float) knps_target * 1000.0 -
+              (float) nodes_per_second) / ((float) knps_target * 1000.0);
+          nps_loop -= nps_loop * error;
+          nps_loop = Max(nps_loop + 1, 4);
+#  if defined(DEBUG)
+          Print(32, "nps_loop=%d  nps=%llu  knps_target=%d\n", nps_loop,
+              nodes_per_second, knps_target);
+#  endif
+        }
+#endif
+/*
+ ************************************************************
+ *                                                          *
  *  There are multiple termination criteria that are used.  *
  *  The first and most obvious is that we have exceeded the *
  *  target time limit.  Others include reaching a user-set  *
@@ -613,8 +642,8 @@ int Iterate(int wtm, int search_type, int root_list_done) {
         Print(8, "  nps=%s\n", DisplayKMB(nodes_per_second, 0));
         Print(8, "        chk=%s", DisplayKMB(tree->extensions_done, 0));
         Print(8, "  qchk=%s", DisplayKMB(tree->qchecks_done, 0));
-        Print(8, "  fp=%s", DisplayKMB(tree->moves_fpruned, 0));
-        Print(8, "  mcp=%s", DisplayKMB(tree->moves_mpruned, 0));
+        Print(8, "  fp=%s", DisplayKMB(tree->futility_moves_pruned, 0));
+        Print(8, "  mcp=%s", DisplayKMB(tree->late_moves_pruned, 0));
         Print(8, "  50move=%d",
             (ReversibleMove(last_pv.path[1]) ? Reversible(0) + 1 : 0));
         if (tree->egtb_hits)
@@ -678,7 +707,8 @@ int Iterate(int wtm, int search_type, int root_list_done) {
   else {
     last_root_value = tree->pv[0].pathv;
     value = tree->pv[0].pathv;
-    book_move = 1;
+    if (!egtb)
+      book_move = 1;
     if (analyze_mode)
       Kibitz(4, wtm, 0, 0, 0, 0, 0, 0, kibitz_text);
   }

@@ -22,13 +22,13 @@ char cmd_buffer[4096];
 char *args[512];
 char buffer[4096];
 int line_length = 80;
-unsigned char convert_buff[8];
+uint8_t convert_buff[8];
 int nargs;
 int failhi_delta, faillo_delta;
 int ponder_value;
 int move_actually_played;
 int ponder_move;
-unsigned ponder_moves[256];
+uint32_t ponder_moves[256];
 int num_ponder_moves;
 int book_move;
 int book_learn_eval[LEARN_INTERVAL];
@@ -423,13 +423,13 @@ uint64_t minus8dir[65];
 uint64_t minus9dir[65];
 uint64_t mask_eptest[64];
 POSITION display;
-#if !defined(INLINEASM)
-unsigned char msb[65536];
-unsigned char lsb[65536];
+#if defined(NO_INTRIN)
+uint8_t msb[65536];
+uint8_t lsb[65536];
 #endif
-unsigned char msb_8bit[256];
-unsigned char lsb_8bit[256];
-unsigned char pop_cnt_8bit[256];
+uint8_t msb_8bit[256];
+uint8_t lsb_8bit[256];
+uint8_t pop_cnt_8bit[256];
 uint64_t mask_pawn_connected[2][64];
 uint64_t mask_pawn_isolated[64];
 uint64_t mask_passed[2][64];
@@ -442,7 +442,7 @@ const int OOOsqs[2][3] = {{E8, D8, C8}, {E1, D1, C1}};
 const int OOfrom[2] = {E8, E1};
 const int OOto[2] =   {G8, G1};
 const int OOOto[2] =  {C8, C1};
-#define VERSION      "25.2.1"
+#define VERSION      "25.6.1"
 char version[8] = {VERSION};
 PLAYING_MODE mode = normal_mode;
 int batch_mode = 0;                  /* no asynch reads */
@@ -565,10 +565,10 @@ int difficulty;
 int absolute_time_limit;
 int search_time_limit;
 int burp;
-volatile int quit = 0;
-unsigned opponent_start_time, opponent_end_time;
-unsigned program_start_time, program_end_time;
-unsigned start_time, end_time;
+int quit = 0;
+uint32_t opponent_start_time, opponent_end_time;
+uint32_t program_start_time, program_end_time;
+uint32_t start_time, end_time;
 TREE *block[MAX_BLOCKS + 1];
 THREAD thread[CPUS];
 #if (CPUS > 1)
@@ -577,13 +577,13 @@ lock_t lock_smp, lock_io;
   pthread_attr_t attributes;
 #endif
 #endif
-unsigned int hardware_processors;
-unsigned int smp_max_threads = 0;
-unsigned int smp_split_group = 8;       /* max threads per group              */
-unsigned int smp_split_at_root = 1;     /* enable split at root               */
-unsigned int smp_min_split_depth = 5;   /* don't split within 5 plies of tips */
-unsigned int smp_gratuitous_depth = 10; /* gratuitous splits if depth > 10    */
-unsigned int smp_gratuitous_limit = 6;  /* max gratuitous splits / thread     */
+int32_t hardware_processors;
+uint32_t smp_max_threads = 0;
+int32_t smp_split_group = 8;       /* max threads per group              */
+int32_t smp_split_at_root = 1;     /* enable split at root               */
+int32_t smp_min_split_depth = 5;   /* don't split within 5 plies of tips */
+int32_t smp_gratuitous_depth = 10; /* gratuitous splits if depth > 10    */
+int32_t smp_gratuitous_limit = 7;  /* max gratuitous splits / thread     */
 int smp_nice = 1;                       /* terminate idle threads             */
 int smp_affinity = 0;                   /* anything >= 0 is enabled           */
 int smp_affinity_increment = 1;         /* if physical cores are zero - N-1 
@@ -604,24 +604,24 @@ int smp_numa = 0;                       /* disables NUMA mode by default      */
 */
 int autotune_params = 4;
 struct autotune tune[16] = {
-  { 4, 20, 4, "max thread group", "smpgroup", &smp_split_group},
-  { 4,  8, 1, "min split depth", "smpmin", &smp_min_split_depth},
-  {10, 16, 2, "min gratuitous split depth", "smpgsd", &smp_gratuitous_depth},
-  { 1,  8, 2, "gratuitous split limit", "smpgsl", &smp_gratuitous_limit},
+  { 4, CPUS, 4, "max thread group", "smpgroup", &smp_split_group},
+  { 4,    8, 1, "min split depth", "smpmin", &smp_min_split_depth},
+  {10,   16, 2, "min gratuitous split depth", "smpgsd", &smp_gratuitous_depth},
+  { 1,    8, 2, "gratuitous split limit", "smpgsl", &smp_gratuitous_limit},
 };
-unsigned parallel_splits;
-unsigned parallel_splits_wasted;
-unsigned parallel_aborts;
-unsigned parallel_joins;
-unsigned busy_percent = 0;
+uint32_t parallel_splits;
+uint32_t parallel_splits_wasted;
+uint32_t parallel_aborts;
+uint32_t parallel_joins;
+uint32_t busy_percent = 0;
 uint64_t game_max_blocks = 0;
 volatile int smp_split = 0;
-volatile int smp_threads = 0;
+volatile uint32_t smp_threads = 0;
 volatile int initialized_threads = 0;
 int crafty_is_white = 0;
-unsigned nodes_between_time_checks = 1000000;
-unsigned nodes_per_second = 1000000;
-int next_time_check = 100000;
+int64_t nodes_between_time_checks = 1000000;
+uint64_t nodes_per_second = 1000000;
+int64_t next_time_check = 100000;
 int transposition_age = 0;
 int thinking = 0;
 int pondering = 0;
@@ -644,7 +644,7 @@ int booking = 0;
  ************************************************************
  */
 int display_options = 1 | 2 | 8 | 16 | 32 | 2048;
-unsigned noise_level = 100;
+uint64_t noise_level = 100;
 int noise_block = 0;
 int tc_moves = 60;
 int tc_time = 180000;
@@ -662,8 +662,35 @@ int move_number = 1;
 int moves_out_of_book = 0;
 int first_nonbook_factor = 0;
 int first_nonbook_span = 0;
-#if defined(SKILL)
-int skill = 100;
+#if defined(ELO)
+uint64_t burner[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+/*  following data:  First vector is list of potential Elo values;
+                     Second vector is nps to approximate that Elo;
+                     Third vector is the eval cpu burner count to produce
+                     that NPS as a first guess.  The value chosen from this
+                     vector will be adjusted as the program plays this game
+                     to get the NPS close to the target, so it just needs to
+                     be reasonable.  Crafty will tune it very accurately once
+                     it starts to search.  If set too large, the first move
+                     might be very weak, if set too low, the first move might
+                     be stronger than intended.  The default values will work
+                     well.  As a note, an NPS of 6M (6000 knodes below) is
+                     guestimated as playing at 2800.  That might change as 
+                     more data is gathered.
+*/
+const int elo_set[15] =     {    800,   1000,   1200,   1400,   1600,
+                                1800,   2000,   2200,   2400,   2600,
+                                2800,   3000,   3200,   3400,   3600 };
+const int elo_knps[15] =    {      1,      1,      2,      4,      8,
+                                  12,     25,     45,    150,    750,   
+                                6000,  18000,  54000, 150000, 300000 };
+const int elo_burnc[15] =   {   8000,   8000,   8000,   8000,   8000,
+                                8000,   8000,   4000,   2000,   1000,
+                                   0,      0,      0,      0,      0 };
+int nps_loop = 0;
+int knps_target = 9999999;
+int elo = 3601;
+int elo_randomize = 0;
 #endif
 int show_book = 0;
 int book_selection_width = 5;
@@ -730,7 +757,7 @@ const uint64_t magic_bishop_mask[64] = {
   0x0028440200000000ull, 0x0050080402000000ull, 0x0020100804020000ull,
   0x0040201008040200ull
 };
-const unsigned magic_bishop_shift[64] = {
+const uint32_t magic_bishop_shift[64] = {
   58, 59, 59, 59, 59, 59, 59, 58,
   59, 59, 59, 59, 59, 59, 59, 59,
   59, 59, 57, 57, 57, 57, 59, 59,
@@ -928,7 +955,7 @@ const uint64_t magic_rook_mask[64] = {
   0x6E10101010101000ull, 0x5E20202020202000ull, 0x3E40404040404000ull,
   0x7E80808080808000ull
 };
-const unsigned magic_rook_shift[64] = {
+const uint32_t magic_rook_shift[64] = {
   52, 53, 53, 53, 53, 53, 53, 52,
   53, 54, 54, 54, 54, 54, 54, 53,
   53, 54, 54, 54, 54, 54, 54, 53,
@@ -939,8 +966,8 @@ const unsigned magic_rook_shift[64] = {
   53, 54, 54, 53, 53, 53, 53, 53
 };
 const uint64_t mobility_mask_b[4] = {
-  0xFF818181818181FFull, 0x007E424242427E00ull,
-  0x00003C24243C0000ull, 0x0000001818000000ull
+  0xFFFFFFFFFFFFFFFFull, 0x0000000000000000ull,
+  0x0000000000000000ull, 0x0000000000000000ull
 };
 const uint64_t mobility_mask_r[4] = {
   0x8181818181818181ull, 0x4242424242424242ull,

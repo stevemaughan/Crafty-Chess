@@ -8,10 +8,10 @@
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -24,73 +24,53 @@
 #ifndef TBPROBE_H
 #  define TBPROBE_H
 
+#  include <stdint.h>
 #  include "tbconfig.h"
+#  include "chess.h"
+#  include "data.h"
 
-#  ifdef __cplusplus
-extern "C" {
-#  endif
-
-#  ifndef TB_NO_STDINT
-#    include <stdint.h>
-#  else
-  typedef unsigned char uint8_t;
-  typedef unsigned short uint16_t;
-  typedef unsigned uint32_t;
-  typedef long long unsigned uint64_t;
-  typedef char int8_t;
-  typedef short int16_t;
-  typedef int int32_t;
-  typedef long long int64_t;
-#  endif
-
-#  ifndef TB_NO_STDBOOL
-#    include <stdbool.h>
-#  else
-#    ifndef __cplusplus
-  typedef uint8_t bool;
-#      define true    1
-#      define false   0
-#    endif
-#  endif
+typedef uint8_t bool;
+#  define true    1
+#  define false   0
 
 /*
  * Internal definitions.  Do not call these functions directly.
  */
-  extern bool tb_init_impl(const char *_path);
-  extern unsigned tb_probe_wdl_impl(uint64_t _white, uint64_t _black,
-      uint64_t _kings, uint64_t _queens, uint64_t _rooks, uint64_t _bishops,
-      uint64_t _knights, uint64_t _pawns, unsigned _ep, bool _turn,
-      uint64_t _hash);
-  extern unsigned tb_probe_root_impl(uint64_t _white, uint64_t _black,
-      uint64_t _kings, uint64_t _queens, uint64_t _rooks, uint64_t _bishops,
-      uint64_t _knights, uint64_t _pawns, unsigned _rule50, unsigned _ep,
-      bool _turn, unsigned *_results);
+extern bool tb_init_impl(const char *_path);
+extern unsigned tb_probe_wdl_impl(uint64_t _white, uint64_t _black,
+    uint64_t _kings, uint64_t _queens, uint64_t _rooks, uint64_t _bishops,
+    uint64_t _knights, uint64_t _pawns, unsigned _ep, bool _turn);
+extern unsigned tb_probe_root_impl(uint64_t _white, uint64_t _black,
+    uint64_t _kings, uint64_t _queens, uint64_t _rooks, uint64_t _bishops,
+    uint64_t _knights, uint64_t _pawns, unsigned _rule50, unsigned _ep,
+    bool _turn, unsigned *_results);
 
 /****************************************************************************/
 /* MAIN API                                                                 */
 /****************************************************************************/
 
 #  define TB_MAX_MOVES                (192+1)
-
+#  define TB_MAX_CAPTURES             64
+#  define TB_MAX_PLY                  256
 #  define TB_CASTLING_K               0x1
- /* White king-side. */
+                                        /* White king-side. */
 #  define TB_CASTLING_Q               0x2
- /* White queen-side. */
+                                        /* White queen-side. */
 #  define TB_CASTLING_k               0x4
- /* Black king-side. */
+                                        /* Black king-side. */
 #  define TB_CASTLING_q               0x8
- /* Black queen-side. */
+                                        /* Black queen-side. */
 
 #  define TB_LOSS                     0
- /* LOSS */
+                                      /* LOSS */
 #  define TB_BLESSED_LOSS             1
- /* LOSS but 50-move draw */
+                                      /* LOSS but 50-move draw */
 #  define TB_DRAW                     2
- /* DRAW */
+                                      /* DRAW */
 #  define TB_CURSED_WIN               3
- /* WIN but 50-move draw  */
+                                      /* WIN but 50-move draw  */
 #  define TB_WIN                      4
- /* WIN  */
+                                      /* WIN  */
 
 #  define TB_PROMOTES_NONE            0
 #  define TB_PROMOTES_QUEEN           1
@@ -150,7 +130,7 @@ extern "C" {
 /*
  * The tablebase can be probed for any position where #pieces <= TB_LARGEST.
  */
-  extern unsigned TB_LARGEST;
+extern unsigned TB_LARGEST;
 
 /*
  * Initialize the tablebase.
@@ -164,9 +144,13 @@ extern "C" {
  *   initialized.  If no tablebase files are found, then `true' is returned
  *   and TB_LARGEST is set to zero.
  */
-  static inline bool tb_init(const char *_path) {
-    return tb_init_impl(_path);
-  }
+bool tb_init(const char *_path);
+
+/*
+ * Free any resources allocated by tb_init
+ */
+void tb_free(void);
+
 /*
  * Probe the Win-Draw-Loss (WDL) table.
  *
@@ -190,18 +174,18 @@ extern "C" {
  * NOTES:
  * - Engines should use this function during search.
  * - This function is thread safe assuming TB_NO_THREADS is disabled.
- */ static inline unsigned tb_probe_wdl(
-      uint64_t _white, uint64_t _black, uint64_t _kings, uint64_t _queens,
-      uint64_t _rooks, uint64_t _bishops, uint64_t _knights, uint64_t _pawns,
-      unsigned _rule50, unsigned _castling, unsigned _ep, bool _turn,
-      uint64_t _hash) {
-    if (_castling != 0)
-      return TB_RESULT_FAILED;
-    if (_rule50 != 0)
-      return TB_RESULT_FAILED;
-    return tb_probe_wdl_impl(_white, _black, _kings, _queens, _rooks,
-        _bishops, _knights, _pawns, _ep, _turn, _hash);
-  }
+ */
+static inline unsigned tb_probe_wdl(uint64_t _white, uint64_t _black,
+    uint64_t _kings, uint64_t _queens, uint64_t _rooks, uint64_t _bishops,
+    uint64_t _knights, uint64_t _pawns, unsigned _rule50, unsigned _castling,
+    unsigned _ep, bool _turn) {
+  if (_castling != 0)
+    return TB_RESULT_FAILED;
+  if (_rule50 != 0)
+    return TB_RESULT_FAILED;
+  return tb_probe_wdl_impl(_white, _black, _kings, _queens, _rooks, _bishops,
+      _knights, _pawns, _ep, _turn);
+}
 
 /*
  * Probe the Distance-To-Zero (DTZ) table.
@@ -248,15 +232,70 @@ extern "C" {
  * - This function is NOT thread safe.  For engines this function should only
  *   be called once at the root per search.
  */
-  static inline unsigned tb_probe_root(uint64_t _white, uint64_t _black,
-      uint64_t _kings, uint64_t _queens, uint64_t _rooks, uint64_t _bishops,
-      uint64_t _knights, uint64_t _pawns, unsigned _rule50,
-      unsigned _castling, unsigned _ep, bool _turn, unsigned *_results) {
-    if (_castling != 0)
-      return TB_RESULT_FAILED;
-    return tb_probe_root_impl(_white, _black, _kings, _queens, _rooks,
-        _bishops, _knights, _pawns, _rule50, _ep, _turn, _results);
-  }
+static inline unsigned tb_probe_root(uint64_t _white, uint64_t _black,
+    uint64_t _kings, uint64_t _queens, uint64_t _rooks, uint64_t _bishops,
+    uint64_t _knights, uint64_t _pawns, unsigned _rule50, unsigned _castling,
+    unsigned _ep, bool _turn, unsigned *_results) {
+  if (_castling != 0)
+    return TB_RESULT_FAILED;
+  return tb_probe_root_impl(_white, _black, _kings, _queens, _rooks, _bishops,
+      _knights, _pawns, _rule50, _ep, _turn, _results);
+}
+
+typedef uint16_t TbMove;
+
+#  define TB_MOVE_FROM(move)                                                 \
+    (((move) >> 6) & 0x3F)
+#  define TB_MOVE_TO(move)                                                   \
+    ((move) & 0x3F)
+#  define TB_MOVE_PROMOTES(move)                                             \
+    (((move) >> 12) & 0x7)
+
+struct TbRootMove {
+  TbMove move;
+  TbMove pv[TB_MAX_PLY];
+  unsigned pvSize;
+  int32_t tbScore, tbRank;
+};
+
+struct TbRootMoves {
+  unsigned size;
+  struct TbRootMove moves[TB_MAX_MOVES];
+};
+
+/*
+ * Use the DTZ tables to rank and score all root moves.
+ * INPUT: as for tb_probe_root
+ * OUTPUT: TbRootMoves structure is filled in. This contains
+ * an array of TbRootMove structures.
+ * Each structure instance contains a rank, a score, and a
+ * predicted principal variation.
+ * RETURN VALUE:
+ *   non-zero if ok, 0 means not all probes were successful
+ *
+ */
+int tb_probe_root_dtz(uint64_t _white, uint64_t _black, uint64_t _kings,
+    uint64_t _queens, uint64_t _rooks, uint64_t _bishops, uint64_t _knights,
+    uint64_t _pawns, unsigned _rule50, unsigned _castling, unsigned _ep,
+    bool _turn, bool hasRepeated, bool useRule50,
+    struct TbRootMoves *_results);
+
+/*
+// Use the WDL tables to rank and score all root moves.
+// This is a fallback for the case that some or all DTZ tables are missing.
+ * INPUT: as for tb_probe_root
+ * OUTPUT: TbRootMoves structure is filled in. This contains
+ * an array of TbRootMove structures.
+ * Each structure instance contains a rank, a score, and a
+ * predicted principal variation.
+ * RETURN VALUE:
+ *   non-zero if ok, 0 means not all probes were successful
+ *
+ */
+int tb_probe_root_wdl(uint64_t _white, uint64_t _black, uint64_t _kings,
+    uint64_t _queens, uint64_t _rooks, uint64_t _bishops, uint64_t _knights,
+    uint64_t _pawns, unsigned _rule50, unsigned _castling, unsigned _ep,
+    bool _turn, bool useRule50, struct TbRootMoves *_results);
 
 /****************************************************************************/
 /* HELPER API                                                               */
@@ -270,20 +309,16 @@ extern "C" {
 
 #  ifndef TB_NO_HELPER_API
 
-  extern unsigned tb_pop_count(uint64_t _bb);
-  extern unsigned tb_lsb(uint64_t _bb);
-  extern uint64_t tb_pop_lsb(uint64_t _bb);
-  extern uint64_t tb_king_attacks(unsigned _square);
-  extern uint64_t tb_queen_attacks(unsigned _square, uint64_t _occ);
-  extern uint64_t tb_rook_attacks(unsigned _square, uint64_t _occ);
-  extern uint64_t tb_bishop_attacks(unsigned _square, uint64_t _occ);
-  extern uint64_t tb_knight_attacks(unsigned _square);
-  extern uint64_t tb_pawn_attacks(unsigned _square, bool _color);
+extern unsigned tb_pop_count(uint64_t _bb);
+extern unsigned tb_lsb(uint64_t _bb);
+extern uint64_t tb_pop_lsb(uint64_t _bb);
+extern uint64_t tb_king_attacks(unsigned _square);
+extern uint64_t tb_queen_attacks(unsigned _square, uint64_t _occ);
+extern uint64_t tb_rook_attacks(unsigned _square, uint64_t _occ);
+extern uint64_t tb_bishop_attacks(unsigned _square, uint64_t _occ);
+extern uint64_t tb_knight_attacks(unsigned _square);
+extern uint64_t tb_pawn_attacks(unsigned _square, bool _color);
 
-#  endif
-
-#  ifdef __cplusplus
-}
 #  endif
 
 #endif

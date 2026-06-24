@@ -109,13 +109,11 @@ void BookClusterIn(FILE * file, int positions, BOOK_POSITION * buffer) {
     perror("BookClusterIn fread error: ");
   for (i = 0; i < positions; i++) {
     buffer[i].position =
-        BookIn64((unsigned char *) (file_buffer + i * sizeof(BOOK_POSITION)));
+        BookIn64((uint8_t *) (file_buffer + i * sizeof(BOOK_POSITION)));
     buffer[i].status_played =
-        BookIn32((unsigned char *) (file_buffer + i * sizeof(BOOK_POSITION) +
-            8));
+        BookIn32((uint8_t *) (file_buffer + i * sizeof(BOOK_POSITION) + 8));
     buffer[i].learn =
-        BookIn32f((unsigned char *) (file_buffer + i * sizeof(BOOK_POSITION) +
-            12));
+        BookIn32f((uint8_t *) (file_buffer + i * sizeof(BOOK_POSITION) + 12));
   }
 }
 
@@ -152,7 +150,7 @@ void BookClusterOut(FILE * file, int positions, BOOK_POSITION * buffer) {
  *                                                                             *
  *******************************************************************************
  */
-float BookIn32f(unsigned char *ch) {
+float BookIn32f(uint8_t * ch) {
   union {
     float fv;
     int iv;
@@ -171,7 +169,7 @@ float BookIn32f(unsigned char *ch) {
  *                                                                             *
  *******************************************************************************
  */
-int BookIn32(unsigned char *ch) {
+int BookIn32(uint8_t * ch) {
   return ch[3] << 24 | ch[2] << 16 | ch[1] << 8 | ch[0];
 }
 
@@ -184,7 +182,7 @@ int BookIn32(unsigned char *ch) {
  *                                                                             *
  *******************************************************************************
  */
-uint64_t BookIn64(unsigned char *ch) {
+uint64_t BookIn64(uint8_t * ch) {
   return (uint64_t) ch[7] << 56 | (uint64_t) ch[6] << 48 | (uint64_t)
       ch[5] << 40 | (uint64_t) ch[4] << 32 | (uint64_t) ch[3]
       << 24 | (uint64_t) ch[2] << 16 | (uint64_t) ch[1] << 8 | (uint64_t)
@@ -200,7 +198,7 @@ uint64_t BookIn64(unsigned char *ch) {
  *                                                                             *
  *******************************************************************************
  */
-unsigned char *BookOut32(int val) {
+uint8_t *BookOut32(int val) {
   convert_buff[3] = val >> 24 & 0xff;
   convert_buff[2] = val >> 16 & 0xff;
   convert_buff[1] = val >> 8 & 0xff;
@@ -217,7 +215,7 @@ unsigned char *BookOut32(int val) {
  *                                                                             *
  *******************************************************************************
  */
-unsigned char *BookOut32f(float val) {
+uint8_t *BookOut32f(float val) {
   union {
     float fv;
     int iv;
@@ -240,7 +238,7 @@ unsigned char *BookOut32f(float val) {
  *                                                                             *
  *******************************************************************************
  */
-unsigned char *BookOut64(uint64_t val) {
+uint8_t *BookOut64(uint64_t val) {
   convert_buff[7] = val >> 56 & 0xff;
   convert_buff[6] = val >> 48 & 0xff;
   convert_buff[5] = val >> 40 & 0xff;
@@ -272,7 +270,7 @@ int CheckInput(void) {
   static HANDLE inh;
   DWORD dw;
 
-  if (!xboard && !uci_mode && !isatty(fileno(stdin)))
+  if (!xboard && !uci_mode && !_isatty(fileno(stdin)))
     return 0;
   if (batch_mode)
     return 0;
@@ -816,7 +814,7 @@ char *DisplayEvaluationKibitz(int value, int wtm) {
  *                                                                             *
  *******************************************************************************
  */
-char *DisplayPath(TREE * RESTRICT tree, int wtm, PATH * pv) {
+char *DisplayPath(TREE * tree, int wtm, PATH * pv) {
   static char buffer[4096];
   int i, t_move_number;
 
@@ -868,8 +866,8 @@ char *DisplayPath(TREE * RESTRICT tree, int wtm, PATH * pv) {
  *                                                                             *
  *******************************************************************************
  */
-void DisplayFail(TREE * RESTRICT tree, int type, int level, int wtm, int time,
-    int move, int value, int force) {
+void DisplayFail(TREE * tree, int type, int wtm, int time, int move,
+    int value, int force) {
   char buffer[4096], *fh_indicator;
 
 /*
@@ -934,12 +932,12 @@ void DisplayFail(TREE * RESTRICT tree, int type, int level, int wtm, int time,
  *                                                                             *
  *******************************************************************************
  */
-void DisplayPV(TREE * RESTRICT tree, int level, int wtm, int time, PATH * pv,
+void DisplayPV(TREE * tree, int level, int wtm, int time, PATH * pv,
     int force) {
   char buffer[4096], *buffp, *bufftemp;
-  char blanks[40] = { "                                        " };
+  char blanks[40] = { "                                       " };
   int i, len, t_move_number, nskip = 0, twtm = wtm, pv_depth = pv->pathd;;
-  unsigned int idle_time;
+  uint32_t idle_time;
 
   if (uci_mode) {
     UCIInfo(wtm, time, pv);
@@ -1050,7 +1048,7 @@ void DisplayPV(TREE * RESTRICT tree, int level, int wtm, int time, PATH * pv,
  *                                                                             *
  *******************************************************************************
  */
-char *DisplayHHMMSS(unsigned int time) {
+char *DisplayHHMMSS(uint32_t time) {
   static char out[32];
 
   time = time / 100;
@@ -1067,7 +1065,7 @@ char *DisplayHHMMSS(unsigned int time) {
  *                                                                             *
  *******************************************************************************
  */
-char *DisplayHHMM(unsigned int time) {
+char *DisplayHHMM(uint32_t time) {
   static char out[10];
 
   time = time / 6000;
@@ -1122,7 +1120,7 @@ char *DisplayKMB(uint64_t val, int type) {
  *                                                                             *
  *******************************************************************************
  */
-char *DisplayTime(unsigned int time) {
+char *DisplayTime(uint32_t time) {
   static char out[10];
 
   if (time < 6000)
@@ -1150,7 +1148,7 @@ char *DisplayTime(unsigned int time) {
  *                                                                             *
  *******************************************************************************
  */
-char *Display2Times(unsigned int time) {
+char *Display2Times(uint32_t time) {
   int ttime, c, spaces;
   static char out[20], tout[10];
 
@@ -1191,7 +1189,7 @@ char *Display2Times(unsigned int time) {
  *                                                                             *
  *******************************************************************************
  */
-char *DisplayTimeKibitz(unsigned int time) {
+char *DisplayTimeKibitz(uint32_t time) {
   static char out[10];
 
   if (time < 6000)
@@ -1211,7 +1209,7 @@ char *DisplayTimeKibitz(unsigned int time) {
  *                                                                             *
  *******************************************************************************
  */
-char *FormatPV(TREE * RESTRICT tree, int wtm, PATH pv) {
+char *FormatPV(TREE * tree, int wtm, PATH pv) {
   int i, t_move_number;
   static char buffer[4096];
 
@@ -1312,7 +1310,7 @@ int GameOver(int wtm) {
  *                                                                             *
  *******************************************************************************
  */
-unsigned int ReadClock(void) {
+uint32_t ReadClock(void) {
 #if defined(UNIX)
   struct timeval timeval;
   struct timezone timezone;
@@ -1321,7 +1319,7 @@ unsigned int ReadClock(void) {
   gettimeofday(&timeval, &timezone);
   return timeval.tv_sec * 100 + (timeval.tv_usec / 10000);
 #else
-  return (unsigned int) GetTickCount() / 10;
+  return (uint32_t) GetTickCount() / 10;
 #endif
 }
 
@@ -1333,7 +1331,7 @@ unsigned int ReadClock(void) {
  *                                                                             *
  *******************************************************************************
  */
-int FindBlockID(TREE * RESTRICT which) {
+int FindBlockID(TREE * which) {
   int i;
 
   for (i = 0; i <= smp_max_threads * 64; i++)
@@ -1352,7 +1350,7 @@ int FindBlockID(TREE * RESTRICT which) {
  *                                                                             *
  *******************************************************************************
  */
-int InvalidPosition(TREE * RESTRICT tree) {
+int InvalidPosition(TREE * tree) {
   int error = 0, wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk;
 
   wp = PopCnt(Pawns(white));
@@ -1474,8 +1472,8 @@ int KingPawnSquare(int pawn, int king, int queen, int ptm) {
  *                                                                             *
  *******************************************************************************
  */
-int Mated(TREE * RESTRICT tree, int ply, int wtm) {
-  unsigned int rmoves[256], *mvp, *lastm;
+int Mated(TREE * tree, int ply, int wtm) {
+  uint32_t rmoves[256], *mvp, *lastm;
   int temp = 0;
 
 /*
@@ -1649,7 +1647,7 @@ void Print(int vb, char *fmt, ...) {
  *                                                                             *
  *******************************************************************************
  */
-unsigned int Random32(void) {
+uint32_t Random32(void) {
 /*
  random numbers from Mathematica 2.0.
  SeedRandom = 1;
@@ -1687,7 +1685,7 @@ unsigned int Random32(void) {
     j = 55 - 1;
   if (--k < 0)
     k = 55 - 1;
-  return (unsigned int) ul;
+  return (uint32_t) ul;
 }
 
 /*
@@ -1701,7 +1699,7 @@ unsigned int Random32(void) {
  */
 uint64_t Random64(void) {
   uint64_t result;
-  unsigned int r1, r2;
+  uint32_t r1, r2;
 
   r1 = Random32();
   r2 = Random32();
@@ -1853,7 +1851,7 @@ int ReadInput(void) {
  *                                                                             *
  *******************************************************************************
  */
-int ReadChessMove(TREE * RESTRICT tree, FILE * input, int wtm, int one_move) {
+int ReadChessMove(TREE * tree, FILE * input, int wtm, int one_move) {
   int move = 0, status;
   static char text[128];
   char *tmove;
@@ -1888,7 +1886,7 @@ int ReadChessMove(TREE * RESTRICT tree, FILE * input, int wtm, int one_move) {
  *                                                                             *
  *******************************************************************************
  */
-int ReadNextMove(TREE * RESTRICT tree, char *text, int ply, int wtm) {
+int ReadNextMove(TREE * tree, char *text, int ply, int wtm) {
   char *tmove;
   int move = 0;
 
@@ -1950,7 +1948,7 @@ int ReadPGN(FILE * input, int option) {
  *                                                          *
  ************************************************************
  */
-  while (FOREVER) {
+  while (1) {
     if (!data) {
       eof = fgets(input_buffer, 4096, input);
       if (!eof)
@@ -2039,7 +2037,7 @@ int ReadPGN(FILE * input, int option) {
       last_good_line = lines_read;
       analysis_move[0] = 0;
       if (strchr(buffer, '{') || strchr(buffer, '('))
-        while (FOREVER) {
+        while (1) {
           char *skip, *ch;
 
           analysis = 1;
@@ -2262,7 +2260,7 @@ void Kibitz(int level, int wtm, int depth, int time, int value,
  *                                                                             *
  *******************************************************************************
  */
-void Output(TREE * RESTRICT tree) {
+void Output(TREE * tree) {
   int wtm, i;
 
 /*
@@ -2296,8 +2294,8 @@ void Output(TREE * RESTRICT tree) {
  *                                                                             *
  *******************************************************************************
  */
-void Trace(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
-    int beta, const char *name, int mode, int phase, int order) {
+void Trace(TREE * tree, int ply, int depth, int wtm, int alpha, int beta,
+    const char *name, int mode, int phase, int order) {
   int i;
 
   Lock(lock_io);
@@ -2345,7 +2343,7 @@ int StrCnt(char *string, char testchar) {
  *                                                                             *
  *******************************************************************************
  */
-int ValidMove(TREE * RESTRICT tree, int ply, int wtm, int move) {
+int ValidMove(TREE * tree, int ply, int wtm, int move) {
   int btm = Flip(wtm);
 
 /*
@@ -2471,7 +2469,7 @@ int ValidMove(TREE * RESTRICT tree, int ply, int wtm, int move) {
  *                                                                             *
  *******************************************************************************
  */
-int VerifyMove(TREE * RESTRICT tree, int ply, int wtm, int move) {
+int VerifyMove(TREE * tree, int ply, int wtm, int move) {
   unsigned moves[256], *mv, *mvp;
 
 /*
@@ -2534,12 +2532,12 @@ static void WinNumaInit(void) {
         fSystemIsNUMA = TRUE;
         if (ulNumaNodes > 255)
           ulNumaNodes = 255;
-        printf("System is NUMA. " PRId64 " nodes reported by Windows\n",
+        printf("System is NUMA. %" PRId64 " nodes reported by Windows\n",
             ulNumaNodes + 1);
         for (ulNode = 0; ulNode <= ulNumaNodes; ulNode++) {
           pGetNumaNodeProcessorMask((UCHAR) ulNode,
               &ullProcessorMask[ulNode]);
-          printf("Node " PRId64 " CPUs: ", ulNode);
+          printf("Node %" PRId64 " CPUs: ", ulNode);
           ullMask = ullProcessorMask[ulNode];
           if (0 == ullMask)
             fSystemIsNUMA = FALSE;
@@ -2547,7 +2545,7 @@ static void WinNumaInit(void) {
             ulCPU = 0;
             do {
               if (ullMask & 1)
-                printf("" PRId64 " ", ulCPU);
+                printf("%" PRId64 " ", ulCPU);
               ulCPU++;
               ullMask >>= 1;
             } while (ullMask);
@@ -2559,13 +2557,13 @@ static void WinNumaInit(void) {
 // so ProcessorMask[0] would always be node for thread 0
         dwCPU =
             pSetThreadIdealProcessor(GetCurrentThread(), MAXIMUM_PROCESSORS);
-        printf("Current ideal CPU is %llu\n", dwCPU);
+        printf("Current ideal CPU is %lu\n", dwCPU);
         pSetThreadIdealProcessor(GetCurrentThread(), dwCPU);
         if ((((DWORD) - 1) != dwCPU) && (MAXIMUM_PROCESSORS != dwCPU)
-            && !(ullProcessorMask[0] & (1u << dwCPU))) {
+            && !(ullProcessorMask[0] & (1ull << dwCPU))) {
           for (ulNode = 1; ulNode <= ulNumaNodes; ulNode++) {
-            if (ullProcessorMask[ulNode] & (1u << dwCPU)) {
-              printf("Exchanging nodes 0 and " PRId64 "\n", ulNode);
+            if (ullProcessorMask[ulNode] & (1ull << dwCPU)) {
+              printf("Exchanging nodes 0 and %" PRId64 "\n", ulNode);
               ullMask = ullProcessorMask[ulNode];
               ullProcessorMask[ulNode] = ullProcessorMask[0];
               ullProcessorMask[0] = ullMask;
@@ -2592,7 +2590,7 @@ pthread_t NumaStartThread(void *func, void *args) {
     if (ulNumaNode > ulNumaNodes)
       ulNumaNode = 0;
     ullMask = ullProcessorMask[ulNumaNode];
-    printf("Starting thread on node " PRId64 " CPU mask %I64d\n", ulNumaNode,
+    printf("Starting thread on node %" PRId64 " CPU mask %ld\n", ulNumaNode,
         ullMask);
     SetThreadAffinityMask(GetCurrentThread(), (DWORD_PTR) ullMask);
     hThread = (HANDLE) _beginthreadex(0, 0, func, args, CREATE_SUSPENDED, 0);

@@ -44,8 +44,8 @@
  *******************************************************************************
  */
 void AutoTune(int nargs, char *args[]) {
-  unsigned int target_time = 3000, accuracy = 4, atstart, atend;
-  unsigned int time, current, setting[64], times[64], last_time, stageii;
+  uint32_t target_time = 3000, accuracy = 4, atstart, atend;
+  uint32_t time, current, setting[64], times[64], last_time, stageii;
   int benchd, i, v, p, best, bestv, samples;
   FILE *craftyrc = fopen(".craftyrc", "a");
 
@@ -71,12 +71,12 @@ void AutoTune(int nargs, char *args[]) {
  ************************************************************
  *                                                          *
  *  First task is to find the benchmark setting that will   *
- *  run in the alotted time.  The Bench() command runs six  *
+ *  run in the alotted time.  The Bench() command runs 64   *
  *  positions, so we want the command to run in no more     *
- *  than six times the autotune time limit to average the   *
+ *  than 64 times the autotune time limit to average the    *
  *  specified time per move.  We break out of the loop when *
  *  bench takes more than 6x this time limit and use the    *
- *  previous value which just fit inside the limit.         *
+ *  previous value which just fits inside the limit.        *
  *                                                          *
  ************************************************************
  */
@@ -95,7 +95,7 @@ void AutoTune(int nargs, char *args[]) {
   Print(4095, "\nBegin stage I (calibration)\n");
   last_time = 0;
   for (benchd = -5; benchd < 10; benchd++) {
-    Print(4095, "bench %2d:", benchd);
+    Print(4095, "bench %2d:\n", benchd);
     time = 0;
     for (v = 0; v < accuracy; v++)
       time += Bench(benchd, 1);

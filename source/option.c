@@ -8,7 +8,7 @@
 #endif
 #include "epdglue.h"
 #include "tbprobe.h"
-/* last modified 08/03/16 */
+/* last modified 11/10/19 */
 /*
  *******************************************************************************
  *                                                                             *
@@ -18,7 +18,7 @@
  *                                                                             *
  *******************************************************************************
  */
-int Option(TREE * RESTRICT tree) {
+int Option(TREE * tree) {
   int v;
 
 /*
@@ -605,6 +605,69 @@ int Option(TREE * RESTRICT tree) {
 /*
  ************************************************************
  *                                                          *
+ *  "elo" command sets an approximate Elo level that Crafty *
+ *  should play at.  Valid numbers range between 800 and    *
+ *  3600.  (3600 and higher simply say "play at highest     *
+ *  level possible")  The base assumption is that a search  *
+ *  speed of 6M nodes per second + no randomness in the     *
+ *  evaluation will play at about 2600.  Crafty will set    *
+ *  a target NPS here, and then will adjust tthe nps_loop   *
+ *  dynamically to adjust the NPS to this value no matter   *
+ *  how good the hardware.                                  *
+ *                                                          *
+ *  I hope it is obvious that if the base hardware can't    *
+ *  search at 6M nodes per second, then the Elo will never  *
+ *  reach the level that was set.                           *
+ *                                                          *
+ ************************************************************
+ */
+#if defined(ELO)
+  else if (OptionMatch("elo", *args)) {
+    int i;
+    float adjust;
+
+    if (nargs == 2) {
+      if (OptionMatch("off", args[1])) {
+        elo = 3601;
+        nps_loop = 0;
+        elo_randomize = 0;
+      } else {
+        elo = atoi(args[1]);
+        if (elo < 800)
+          elo = 800;
+        elo = Min(elo, 3601);
+        if (elo >= 3600) {
+          nps_loop = 0;
+          knps_target = 0;
+          elo_randomize = 0;
+        } else {
+          elo_randomize = Min(1800, elo - 800) / 18;
+          for (i = 0; i < 15; i++)
+            if (elo <= elo_set[i]) {
+              nps_loop = elo_burnc[i];
+              adjust = (elo_set[i] - elo) / 200.0;
+              nps_loop -= adjust * (elo_burnc[i] - elo_burnc[i - 1]);
+              knps_target =
+                  elo_knps[i] - (elo_knps[i] - elo_knps[i - 1]) * adjust;
+              break;
+            }
+        }
+      }
+    }
+    if (elo > 3600)
+      Print(4095, "Elo skill setting disabled\n");
+    else
+      Print(4095, "Elo set to %d\n", elo);
+#  if defined(DEBUG)
+    printf("elo_randomize=%d\n", elo_randomize);
+    printf("knps_target=%d\n", knps_target);
+    printf("nps_loop = %d\n", nps_loop);
+#  endif
+  }
+#endif
+/*
+ ************************************************************
+ *                                                          *
  *  "evtest" command runs a test suite of problems and      *
  *  prints evaluations only.                                *
  *                                                          *
@@ -862,7 +925,7 @@ int Option(TREE * RESTRICT tree) {
  ************************************************************
  */
   else if (OptionMatch("hash", *args)) {
-    size_t old_hash_size = hash_table_size, new_hash_size;
+    uint64_t old_hash_size = hash_table_size, new_hash_size;
 
     if (thinking || pondering)
       return 2;
@@ -1832,8 +1895,10 @@ int Option(TREE * RESTRICT tree) {
  ************************************************************
  */
   else if (OptionMatch("new", *args)) {
-    Print(4095, "NOTICE:  ""new"" command not implemented, please exit and\n");
-    Print(4095, "restart crafty to re-initialize everything for a new game\n");
+    Print(4095,
+        "NOTICE:  " "new" " command not implemented, please exit and\n");
+    Print(4095,
+        "restart crafty to re-initialize everything for a new game\n");
     return 1;
   }
 /*
@@ -2511,7 +2576,7 @@ int Option(TREE * RESTRICT tree) {
 /*
  step 2:  read in the moves.
  */
-    do {
+    while (1) {
       move = 0;
       move = ReadNextMove(tree, buffer, 0, game_wtm);
       if (move) {
@@ -2549,7 +2614,7 @@ int Option(TREE * RESTRICT tree) {
         break;
       if (!strcmp(buffer, "exit"))
         break;
-    } while (1);
+    }
     moves_out_of_book = 0;
     printf("NOTICE: %d moves to next time control\n",
         tc_moves_remaining[root_wtm]);
@@ -2998,12 +3063,12 @@ int Option(TREE * RESTRICT tree) {
     Print(32, " %s  |\n", DisplayEvaluation(egb, 1));
     mgb = tree->score_mg;
     egb = tree->score_eg;
-    EvaluatePassedPawns(tree, black, game_wtm);
+    EvaluatePassedPawns(tree, black);
     mgb = tree->score_mg - mgb;
     egb = tree->score_eg - egb;
     mgw = tree->score_mg;
     egw = tree->score_eg;
-    EvaluatePassedPawns(tree, white, game_wtm);
+    EvaluatePassedPawns(tree, white);
     mgw = tree->score_mg - mgw;
     egw = tree->score_eg - egw;
     tb = (mgb * phase + egb * (62 - phase)) / 62;
@@ -3292,34 +3357,6 @@ int Option(TREE * RESTRICT tree) {
 /*
  ************************************************************
  *                                                          *
- *  "skill" command sets a value from 1-100 that affects    *
- *  Crafty's playing skill level.  100 => max skill, 1 =>   *
- *  minimal skill.  This is used to slow the search speed   *
- *  (and depth) significantly.                              *
- *                                                          *
- ************************************************************
- */
-#if defined(SKILL)
-  else if (OptionMatch("skill", *args)) {
-    if (nargs < 2) {
-      printf("usage:  skill <1-100>\n");
-      return 1;
-    }
-    if (skill != 100)
-      printf("ERROR:  skill can only be changed one time in a game\n");
-    else {
-      skill = atoi(args[1]);
-      if (skill < 1 || skill > 100) {
-        printf("ERROR: skill range is 1-100 only\n");
-        skill = 100;
-      }
-      Print(32, "skill level set to %d%%\n", skill);
-    }
-  }
-#endif
-/*
- ************************************************************
- *                                                          *
  *   "smp" command is used to tune the various SMP search   *
  *   parameters.                                            *
  *                                                          *
@@ -3404,7 +3441,7 @@ int Option(TREE * RESTRICT tree) {
     int proc;
 
     if (nargs < 2) {
-      printf("usage:  smpmt=<threads>\n");
+      printf("usage:  cores/smpmt=<threads>\n");
       return 1;
     }
     if (thinking || pondering)
@@ -3425,8 +3462,6 @@ int Option(TREE * RESTRICT tree) {
       smp_max_threads = CPUS;
     }
     if (smp_max_threads == 1) {
-      Print(4095, "ERROR - max threads can be set to zero (0) to");
-      Print(4095, " disable parallel search, otherwise it must be > 1.\n");
       smp_max_threads = 0;
     }
     if (smp_max_threads)
@@ -4000,7 +4035,7 @@ int OptionMatch(char *command, char *input) {
   return 0;
 }
 
-void OptionPerft(TREE * RESTRICT tree, int ply, int depth, int wtm) {
+void OptionPerft(TREE * tree, int ply, int depth, int wtm) {
   unsigned *mv;
 #if defined(TRACE)
   static char line[256];
