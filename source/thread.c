@@ -1,7 +1,7 @@
 #include "chess.h"
 #include "data.h"
 #include "epdglue.h"
-/* modified 08/03/16 */
+/* modified 01/03/20 */
 /*
  *******************************************************************************
  *                                                                             *
@@ -170,7 +170,7 @@
  *                                                                             *
  *******************************************************************************
  */
-int Split(TREE * RESTRICT tree) {
+int Split(TREE * tree) {
   TREE *child;
   int tid, tstart, tend;
 
@@ -555,7 +555,7 @@ int ThreadSplit(TREE * tree, int ply, int depth, int alpha, int o_alpha,
  *                                                                             *
  *******************************************************************************
  */
-void ThreadStop(TREE * RESTRICT tree) {
+void ThreadStop(TREE * tree) {
   int proc;
 
   Lock(tree->lock);
@@ -577,7 +577,7 @@ void ThreadStop(TREE * RESTRICT tree) {
  *                                                                             *
  *******************************************************************************
  */
-void ThreadTrace(TREE * RESTRICT tree, int depth, int brief) {
+void ThreadTrace(TREE * tree, int depth, int brief) {
   int proc, i;
 
   Lock(tree->lock);
@@ -654,7 +654,7 @@ void ThreadTrace(TREE * RESTRICT tree, int depth, int brief) {
  *                                                                             *
  *******************************************************************************
  */
-int ThreadWait(int tid, TREE * RESTRICT waiting) {
+int ThreadWait(int tid, TREE * waiting) {
   int value, tstart, tend;
 
 /*
@@ -677,7 +677,7 @@ int ThreadWait(int tid, TREE * RESTRICT waiting) {
  *                                                          *
  ************************************************************
  */
-  while (FOREVER) {
+  while (1) {
     tstart = ReadClock();
     while (!thread[tid].tree && (!waiting || waiting->nprocs) && !Join(tid) &&
         !thread[tid].terminate);
@@ -736,7 +736,7 @@ int ThreadWait(int tid, TREE * RESTRICT waiting) {
  *                                                                             *
  *******************************************************************************
  */
-void CopyFromParent(TREE * RESTRICT child) {
+void CopyFromParent(TREE * child) {
   TREE *parent = child->parent;
   int i, ply;
 
@@ -778,8 +778,8 @@ void CopyFromParent(TREE * RESTRICT child) {
   child->egtb_hits = 0;
   child->extensions_done = 0;
   child->qchecks_done = 0;
-  child->moves_fpruned = 0;
-  child->moves_mpruned = 0;
+  child->futility_moves_pruned = 0;
+  child->late_moves_pruned = 0;
   for (i = 0; i < 16; i++) {
     child->LMR_done[i] = 0;
     child->null_done[i] = 0;
@@ -804,7 +804,7 @@ void CopyFromParent(TREE * RESTRICT child) {
  *                                                                             *
  *******************************************************************************
  */
-void CopyToParent(TREE * RESTRICT parent, TREE * RESTRICT child, int value) {
+void CopyToParent(TREE * parent, TREE * child, int value) {
   int i, ply = parent->ply, which;
 
 /*
@@ -858,8 +858,8 @@ void CopyToParent(TREE * RESTRICT parent, TREE * RESTRICT child, int value) {
   parent->egtb_hits += child->egtb_hits;
   parent->extensions_done += child->extensions_done;
   parent->qchecks_done += child->qchecks_done;
-  parent->moves_fpruned += child->moves_fpruned;
-  parent->moves_mpruned += child->moves_mpruned;
+  parent->futility_moves_pruned += child->futility_moves_pruned;
+  parent->late_moves_pruned += child->late_moves_pruned;
   for (i = 1; i < 16; i++) {
     parent->LMR_done[i] += child->LMR_done[i];
     parent->null_done[i] += child->null_done[i];
@@ -885,7 +885,7 @@ void CopyToParent(TREE * RESTRICT parent, TREE * RESTRICT child, int value) {
  *                                                                             *
  *******************************************************************************
  */
-TREE *GetBlock(TREE * RESTRICT parent, int tid) {
+TREE *GetBlock(TREE * parent, int tid) {
   TREE *child;
   static int warnings = 0;
   int i, unused;

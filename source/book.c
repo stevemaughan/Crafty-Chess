@@ -4,7 +4,7 @@
 #if defined(UNIX)
 #  include <unistd.h>
 #endif
-/* last modified 05/08/14 */
+/* last modified 08/12/19 */
 /*
  *******************************************************************************
  *                                                                             *
@@ -40,7 +40,7 @@
  */
 #define BAD_MOVE  0x02
 #define GOOD_MOVE 0x08
-int Book(TREE * RESTRICT tree, int wtm) {
+int Book(TREE * tree, int wtm) {
   static int book_moves[200];
   static BOOK_POSITION start_moves[200];
   static uint64_t selected_key[200];
@@ -746,6 +746,7 @@ int Book(TREE * RESTRICT tree, int wtm) {
     }
     which = Min(which, last_move - 1);
     tree->pv[0].path[1] = book_moves[which];
+    tree->pv[0].pathv = 0;
     percent_played = 100 * bs_played[which] / Max(total_played, 1);
     total_played = bs_played[which];
     m1_status = book_status[which];
@@ -797,7 +798,7 @@ int Book(TREE * RESTRICT tree, int wtm) {
  *                                                                             *
  *******************************************************************************
  */
-int BookPonderMove(TREE * RESTRICT tree, int wtm) {
+int BookPonderMove(TREE * tree, int wtm) {
   uint64_t temp_hash_key, common;
   static unsigned book_moves[200];
   int i, v, key, cluster, n_moves, im, played, tplayed;
@@ -916,7 +917,7 @@ int BookPonderMove(TREE * RESTRICT tree, int wtm) {
  *                                                                             *
  *******************************************************************************
  */
-void Bookup(TREE * RESTRICT tree, int nargs, char **args) {
+void Bookup(TREE * tree, int nargs, char **args) {
   BB_POSITION *bbuffer;
   uint64_t temp_hash_key, common;
   FILE *book_input;
@@ -924,8 +925,7 @@ void Bookup(TREE * RESTRICT tree, int nargs, char **args) {
   static char schar[2] = { "." };
   int result = 0, played, i, mask_word, total_moves;
   int move, move_num, wtm, book_positions, major, minor;
-  int cluster, max_cluster, ignored = 0, ignored_mp = 0, ignored_lose =
-      0;
+  int cluster, max_cluster, ignored = 0, ignored_mp = 0, ignored_lose = 0;
   int errors, data_read;
   int start_elapsed_time, ply, max_ply = 256;
   int stat, files = 0, buffered = 0, min_played = 0, games_parsed = 0;
@@ -944,7 +944,7 @@ void Bookup(TREE * RESTRICT tree, int nargs, char **args) {
  ************************************************************
  */
 #if defined(POSITIONS)
-  unsigned int output_pos, output_wtm;
+  uint32_t output_pos, output_wtm;
   FILE *pout = fopen("positions", "w");
 #endif
   if (!strcmp(args[1], "create")) {
@@ -1270,7 +1270,7 @@ void Bookup(TREE * RESTRICT tree, int nargs, char **args) {
       wins++;
     if (temp.status & 32 && temp.percent_play & 128)
       losses++;
-    while (FOREVER) {
+    while (1) {
       temp = BookupNextPosition(files, 0);
       memcpy((char *) &next.position, temp.position, 8);
       next.status_played = temp.status << 24;
@@ -1374,8 +1374,7 @@ void Bookup(TREE * RESTRICT tree, int nargs, char **args) {
         games_parsed);
     Print(4095, "found %d errors during parsing.\n", errors);
     Print(4095, "ignored %d moves (maxply=%d).\n", ignored, max_ply);
-    Print(4095, "ignored %d moves (minplayed=%d).\n", ignored_mp,
-        min_played);
+    Print(4095, "ignored %d moves (minplayed=%d).\n", ignored_mp, min_played);
     Print(4095, "ignored %d moves (win/lose=%.1f%%).\n", ignored_lose,
         wl_percent * 100);
     Print(4095, "book contains %d unique positions.\n", book_positions);
@@ -1521,7 +1520,7 @@ BB_POSITION BookupNextPosition(int files, int init) {
   return least;
 }
 
-int BookupCompare(const void *pos1, const void *pos2) {
+int CDECL BookupCompare(const void *pos1, const void *pos2) {
   static uint64_t p1, p2;
 
   memcpy((char *) &p1, ((BB_POSITION *) pos1)->position, 8);

@@ -15,8 +15,8 @@
  *                                                                             *
  *******************************************************************************
  */
-int Search(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
-    int beta, int in_check, int do_null) {
+int Search(TREE * tree, int ply, int depth, int wtm, int alpha, int beta,
+    int in_check, int do_null) {
   int repeat = 0, value = 0, pv_node = alpha != beta - 1, n_depth;
   int searched[256];
 
@@ -51,7 +51,7 @@ int Search(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
         return 0;
       }
       if (CheckInput()) {
-        Interrupt(ply);
+        Interrupt();
         if (abort_search)
           return 0;
       }
@@ -138,13 +138,13 @@ int Search(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
  *                                                          *
  *  EGTBs.  Now it's time to try a probe into the endgame   *
  *  tablebase files.  This is done if we notice that there  *
- *  are 6 or fewer pieces left on the board AND the 50 move *
- *  counter is zero which enables probing the WDL EGTBs     *
+ *  are N or fewer pieces left on the board AND the 50 move *
+ *  counter is zero which enables probing the W/D/L EGTBs   *
  *  correctly.  Probing after a capture won't work as it is *
  *  possible that there is a necessary pawn push here and   *
  *  there to reset the 50 move counter, otherwise we could  *
  *  think we were following a winning path but heading to a *
- *  draw.                                                   *
+ *  draw. (N = EGTB_use).                                   *
  *                                                          *
  *  This is another way to get out of the search quickly,   *
  *  but not as quickly as the previous steps since this can *
@@ -184,7 +184,7 @@ int Search(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
           Kings(white) | Kings(black), Queens(white) | Queens(black),
           Rooks(white) | Rooks(black), Bishops(white) | Bishops(black),
           Knights(white) | Knights(black), Pawns(white) | Pawns(black),
-          Reversible(ply), 0, EnPassant(ply), wtm, HashKey);
+          Reversible(ply), 0, EnPassant(ply), wtm);
       if (tb_result != TB_RESULT_FAILED) {
         tree->egtb_hits++;
         switch (tb_result) {
@@ -346,7 +346,7 @@ int Search(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
   return value;
 }
 
-/* last modified 08/03/16 */
+/* last modified 01/02/20 */
 /*
  *******************************************************************************
  *                                                                             *
@@ -356,18 +356,18 @@ int Search(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
  *   At that point it simply returns the current negamax value to the caller   *
  *   to handle as necessary.                                                   *
  *                                                                             *
- *   The "mode" flag indicates which of the following conditions apply here    *
+ *   The "smode" flag indicates which of the following conditions apply here   *
  *   which directly controls parts of the search.                              *
  *                                                                             *
- *      mode = serial   ->  this is a serial search.                           *
+ *     smode = serial   ->  this is a serial search.                           *
  *                                                                             *
- *      mode = parallel ->  this is a parallel search, which implies that this *
+ *     smode = parallel ->  this is a parallel search, which implies that this *
  *                          is a partial search which means we do NOT want to  *
  *                          do any trans/ref updating and we also need to take *
  *                          care about locking things that are being updated   *
  *                          by more than one thread in parallel.               *
  *                                                                             *
- *   When mode = parallel, this code performs the same function as the old     *
+ *   When smode = parallel, this code performs the same function as the old    *
  *   SearchParallel() code, except that it is the main search loop for the     *
  *   program, there is no longer any duplicated code.  This is called by the   *
  *   normal Search() function and by ThreadWait() where idle processes wait    *
@@ -376,8 +376,8 @@ int Search(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
  *                                                                             *
  *******************************************************************************
  */
-int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
-    int alpha, int beta, int searched[], int in_check, int repeat, int mode) {
+int SearchMoveList(TREE * tree, int ply, int depth, int wtm, int alpha,
+    int beta, int searched[], int in_check, int repeat, int smode) {
   TREE *current;
   int extend, reduce, check, original_alpha = alpha, t_beta;
   int i, j, value = 0, pv_node = alpha != beta - 1, search_result, order;
@@ -404,7 +404,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
  ************************************************************
  */
   tree->next_status[ply].phase = HASH;
-  if (mode == parallel) {
+  if (smode == parallel) {
     current = tree->parent;
     t_beta = alpha + 1;
   } else {
@@ -431,13 +431,13 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
  */
   while (1) {
     if (ply == 1 && moves_done == 1 && alpha == original_alpha &&
-        mode == serial)
+        smode == serial)
       break;
-    if (mode == parallel)
+    if (smode == parallel)
       Lock(current->lock);
     order = (ply > 1) ? NextMove(current, ply, depth, wtm, in_check)
         : NextRootMove(current, tree, wtm);
-    if (mode == parallel) {
+    if (smode == parallel) {
       tree->curmv[ply] = current->curmv[ply];
       Unlock(current->lock);
     }
@@ -445,7 +445,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
       break;
 #if defined(TRACE)
     if (ply <= trace_level)
-      Trace(tree, ply, depth, wtm, alpha, beta, "SearchMoveList", mode,
+      Trace(tree, ply, depth, wtm, alpha, beta, "SearchMoveList", smode,
           current->phase[ply], order);
 #endif
     MakeMove(tree, ply, wtm, tree->curmv[ply]);
@@ -533,7 +533,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
             !(PawnPush(wtm, tree->curmv[ply]))) {
           if (depth < FP_depth && !check &&
               MaterialSTM(wtm) + FP_margin[depth] <= alpha && !pv_node) {
-            tree->moves_fpruned++;
+            tree->futility_moves_pruned++;
             break;
           }
 /*
@@ -558,7 +558,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
  */
           if (order > LMP[depth] && depth < LMP_depth && !pv_node && !check &&
               alpha > -MATE + 300 && !CaptureOrPromote(tree->curmv[ply])) {
-            tree->moves_mpruned++;
+            tree->late_moves_pruned++;
             break;
           }
 /*
@@ -603,7 +603,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
           search_result = IN_WINDOW;
           if (value >= beta)
             search_result = FAIL_HIGH;
-          if (mode == parallel && ply == 1)
+          if (smode == parallel && ply == 1)
             search_result = FAIL_HIGH;
         }
       } while (0);
@@ -650,7 +650,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
         }
       }
 #if (CPUS > 1)
-      if (mode == parallel) {
+      if (smode == parallel) {
         Lock(lock_smp);
         Lock(tree->parent->lock);
         if (!tree->stop) {
@@ -701,7 +701,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
  */
     } else if (search_result == IN_WINDOW) {
       alpha = value;
-      if (ply == 1 && mode == serial) {
+      if (ply == 1 && smode == serial) {
         int best;
 
        //
@@ -720,6 +720,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
        //
         if (best != 0) {
           ROOT_MOVE t;
+
           t = root_moves[best];
           for (i = best; i > 0; i--)
             root_moves[i] = root_moves[i - 1];
@@ -730,7 +731,8 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
        // move to the front of the list and update alpha bound.
        //
         for (i = 0; i < n_root_moves; i++) {
-          if (value <= root_moves[i].path.pathv) {
+          if (value <= root_moves[i].path.pathv &&
+              root_moves[i].path.pathd == iteration) {
             ROOT_MOVE t;
             value = root_moves[i].path.pathv;
             alpha = value;
@@ -830,7 +832,8 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
  ************************************************************
  */
 #if (CPUS > 1)
-    if (mode == serial && moves_done && smp_threads &&
+    if (smode == serial && moves_done && smp_threads && (ply != 1 ||
+            search_result == IN_WINDOW) &&
         ThreadSplit(tree, ply, depth, alpha, original_alpha, moves_done))
       do {
         tree->alpha = alpha;
@@ -875,7 +878,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
  *                                                          *
  ************************************************************
  */
-  if (abort_search || tree->stop || mode == parallel)
+  if (abort_search || tree->stop || smode == parallel)
     return alpha;
 /*
  ************************************************************
@@ -919,7 +922,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
   }
 }
 
-/* last modified 08/03/16 */
+/* last modified 12/27/19 */
 /*
  *******************************************************************************
  *                                                                             *
@@ -930,7 +933,7 @@ int SearchMoveList(TREE * RESTRICT tree, int ply, int depth, int wtm,
  *                                                                             *
  *******************************************************************************
  */
-int SearchMove(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
+int SearchMove(TREE * tree, int ply, int depth, int wtm, int alpha,
     int t_beta, int beta, int extend, int reduce, int check) {
   int value;
 /*
@@ -957,8 +960,8 @@ int SearchMove(TREE * RESTRICT tree, int ply, int depth, int wtm, int alpha,
         -t_beta, -alpha, check, DO_NULL);
     if (value > alpha && reduce) {
       value =
-          -Search(tree, ply + 1, depth - 1, Flip(wtm), -t_beta, -alpha, check,
-          DO_NULL);
+          -Search(tree, ply + 1, depth + extend - 1, Flip(wtm), -t_beta,
+          -alpha, check, DO_NULL);
     }
   } else
     value = -Quiesce(tree, ply + 1, Flip(wtm), -t_beta, -alpha, 1);
