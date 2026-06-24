@@ -81,7 +81,7 @@ quick:
 	$(MAKE) target=UNIX \
 		CC=clang \
  		opt='-DSYZYGY -DTRACE -DCPUS=12' \
-		CFLAGS='-Wall -mpopcnt -Wno-array-bounds -pipe -O3' \
+		CFLAGS='-std=gnu17 -Wall -mpopcnt -Wno-array-bounds -pipe -O3' \
 		LDFLAGS='$(LDFLAGS) -lstdc++' \
 		crafty-make
 
@@ -89,7 +89,7 @@ unix-gcc:
 	$(MAKE) -j target=UNIX \
 		CC=gcc \
 		opt='-DSYZYGY -DCPUS=12' \
-		CFLAGS='-Wall -Wno-array-bounds -pipe -O3 -fprofile-use \
+		CFLAGS='-std=gnu17 -Wall -Wno-array-bounds -pipe -O3 -fprofile-use \
 		-mpopcnt -fprofile-correction -pthread' \
 		LDFLAGS='$(LDFLAGS) -fprofile-use -pthread -lstdc++' \
 		crafty-make
@@ -98,7 +98,7 @@ unix-gcc-profile:
 	$(MAKE) -j target=UNIX \
 		CC=gcc \
 		opt='-DSYZYGY -DCPUS=12' \
-		CFLAGS='-Wall -Wno-array-bounds -pipe -O3 -fprofile-arcs \
+		CFLAGS='-std=gnu17 -Wall -Wno-array-bounds -pipe -O3 -fprofile-arcs \
 		-mpopcnt -pthread' \
 		LDFLAGS='$(LDFLAGS) -fprofile-arcs -pthread -lstdc++ ' \
 		crafty-make
@@ -108,7 +108,7 @@ unix-clang:
 	$(MAKE) -j target=UNIX \
 		CC=clang \
 		opt='-DELO -DSYZYGY -DCPUS=12' \
-		CFLAGS='-Wall -Wno-array-bounds -pipe -O3 \
+		CFLAGS='-std=gnu17 -Wall -Wno-array-bounds -pipe -O3 \
 			-mpopcnt -fprofile-instr-use=crafty.profdata' \
 		LDFLAGS='$(LDFLAGS) -fprofile-use -lstdc++' \
 		crafty-make
@@ -117,7 +117,7 @@ unix-clang-profile:
 	$(MAKE) -j target=UNIX \
 		CC=clang \
 		opt='-DELO -DSYZYGY -DCPUS=12' \
-		CFLAGS='-Wall -Wno-array-bounds -pipe -O3 \
+		CFLAGS='-std=gnu17 -Wall -Wno-array-bounds -pipe -O3 \
 			-mpopcnt -fprofile-instr-generate' \
 		LDFLAGS='$(LDFLAGS) -fprofile-instr-generate -lstdc++ ' \
 		crafty-make

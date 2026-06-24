@@ -117,7 +117,7 @@ its native prompt (`White(1): `) with no trailing newline before reading the
 first command — the leading `\n` guarantees `id name` starts on its own line.
 
 ```
-id name Crafty 25.2.1
+id name Crafty 25.6.1
 id author Robert Hyatt
 option name Hash type spin default 64 min 1 max 65536
 option name Threads type spin default 1 min 1 max <CPUS>
@@ -386,7 +386,7 @@ gcc (MinGW), single-threaded:
 
 ```sh
 cd source
-gcc -O2 -DCPUS=1 crafty.c -o crafty.exe -lwinmm
+gcc -std=gnu17 -O2 -DCPUS=1 crafty.c -o crafty.exe -lwinmm
 ```
 
 For a tablebase-capable build, add `-DSYZYGY`; for SMP, set `-DCPUS=N`. Windows
