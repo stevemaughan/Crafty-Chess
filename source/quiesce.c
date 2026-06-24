@@ -39,8 +39,7 @@
  *                                                                             *
  *******************************************************************************
  */
-int Quiesce(TREE * RESTRICT tree, int ply, int wtm, int alpha, int beta,
-    int checks) {
+int Quiesce(TREE * tree, int ply, int wtm, int alpha, int beta, int checks) {
   unsigned *next, *movep;
   int original_alpha = alpha, value, repeat;
 
@@ -287,8 +286,7 @@ int Quiesce(TREE * RESTRICT tree, int ply, int wtm, int alpha, int beta,
  *                                                                             *
  *******************************************************************************
  */
-int QuiesceEvasions(TREE * RESTRICT tree, int ply, int wtm, int alpha,
-    int beta) {
+int QuiesceEvasions(TREE * tree, int ply, int wtm, int alpha, int beta) {
   int original_alpha, value, moves_searched = 0, order, repeat;
 
 /*

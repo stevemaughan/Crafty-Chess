@@ -47,10 +47,10 @@ void Initialize() {
   if (!book_file) {
     book_file = fopen(log_filename, "rb");
     if (!book_file) {
-      Print(2048, "unable to open book file [%s/book.bin].\n", book_path);
+      Print(4095, "unable to open book file [%s/book.bin].\n", book_path);
       Print(32, "book is disabled\n");
     } else {
-      Print(2048, "unable to open book file [%s/book.bin] for \"write\".\n",
+      Print(4095, "unable to open book file [%s/book.bin] for \"write\".\n",
           book_path);
       Print(32, "learning is disabled\n");
     }
@@ -67,7 +67,7 @@ void Initialize() {
         book_path);
   if (book_file) {
     int maj_min;
-    fseek(book_file, - (long) sizeof(int), SEEK_END);
+    fseek(book_file, -(long) sizeof(int), SEEK_END);
     v = fread(&maj_min, 4, 1, book_file);
     if (v <= 0)
       perror("Initialize() fread error: ");
@@ -954,7 +954,7 @@ void InitializeMasks(void) {
 /*
  masks to determine if a pawn has nearby neighbors or not.
  */
-#if !defined(INLINEASM)
+#if defined(NO_INTRIN)
   msb[0] = 64;
   lsb[0] = 16;
   for (i = 1; i < 65536; i++) {

@@ -1,12 +1,12 @@
-# Crafty 25.2.1 — UCI Edition
+# Crafty 25.6.1 — UCI Edition
 
-[![Version](https://img.shields.io/badge/version-25.2.1-blue)](source/data.c)
+[![Version](https://img.shields.io/badge/version-25.6.1-blue)](source/data.c)
 [![Protocols](https://img.shields.io/badge/protocols-UCI%20%7C%20XBoard%20%7C%20Native-brightgreen)](#using-the-engine)
 [![Language](https://img.shields.io/badge/language-C-orange)](source/)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](#building)
 [![License](https://img.shields.io/badge/license-Crafty%20(personal%20use)-yellow)](#license)
 
-**Crafty** is the classic, full-strength open-source chess engine written by Dr. **Robert (Bob) Hyatt** — the direct descendant of the legendary *Cray Blitz*. This repository hosts Crafty **v25.2.1**, a build of upstream Crafty 25.2 that **adds full [UCI](https://en.wikipedia.org/wiki/Universal_Chess_Interface) protocol support** so the engine works out of the box in modern graphical interfaces, while preserving everything that made Crafty great.
+**Crafty** is the classic, full-strength open-source chess engine written by Dr. **Robert (Bob) Hyatt** — the direct descendant of the legendary *Cray Blitz*. This repository hosts Crafty **v25.6.1**, a build of upstream Crafty 25.6 that **adds full [UCI](https://en.wikipedia.org/wiki/Universal_Chess_Interface) protocol support** so the engine works out of the box in modern graphical interfaces, while preserving everything that made Crafty great.
 
 > The `.1` in the version denotes the UCI conversion. Upstream Crafty spoke only the WinBoard/xboard protocol plus its own console commands; this edition speaks **UCI as well** — and the original interfaces still work unchanged.
 
@@ -16,7 +16,7 @@
 
 - [Why this edition](#why-this-edition)
 - [Features](#features)
-- [What's new in 25.2.1](#whats-new-in-2521)
+- [What's new in 25.6.1](#whats-new-in-2561)
 - [Quick start](#quick-start)
 - [Building](#building)
 - [Using the engine](#using-the-engine)
@@ -49,8 +49,9 @@ Most modern GUIs — **Arena, Cute Chess, Nibbler, BanksiaGUI, ChessBase/Fritz**
 - Transposition (hash) table with configurable size.
 - Cross-platform: **Windows** (primary target), **Linux**, **macOS**, and MinGW.
 
-## What's new in 25.2.1
+## What's new in 25.6.1
 
+- ✅ **Rebased onto upstream Crafty 25.6** — the entire UCI conversion re-applied on the newer engine base (previous releases were based on 25.2).
 - ✅ **Full UCI support**, auto-detected alongside WinBoard and native modes.
 - ✅ `position` (startpos / FEN + move replay), `go` (`depth`, `movetime`, `wtime`/`btime`/`winc`/`binc`/`movestogo`, `infinite`, `ponder`), `stop`, `ponderhit`, `isready`, `ucinewgame`, `quit`.
 - ✅ Streaming `info` output (`depth`, `score cp`/`mate`, `nodes`, `nps`, `time`, `pv`) and `bestmove … [ponder …]`.
@@ -64,13 +65,13 @@ Full design notes: [`docs/UCI Implementation.md`](docs/UCI%20Implementation.md).
 ```sh
 # build (Windows, gcc / MinGW-w64)
 cd source
-gcc -O2 -DCPUS=1 crafty.c -o crafty.exe -lwinmm
+gcc -std=gnu17 -O2 -DCPUS=1 crafty.c -o crafty.exe -lwinmm
 
 # sanity-check the UCI handshake
 printf 'uci\nisready\nquit\n' | ./crafty.exe
 ```
 
-You should see `id name Crafty 25.2.1`, the `option …` list, `uciok`, then `readyok`. Point your GUI at the resulting executable and you're playing.
+You should see `id name Crafty 25.6.1`, the `option …` list, `uciok`, then `readyok`. Point your GUI at the resulting executable and you're playing.
 
 ## Building
 
@@ -82,10 +83,10 @@ Crafty uses a **unity build**: [`source/crafty.c`](source/crafty.c) `#include`s 
 cd source
 
 # Single-threaded (quick test build)
-gcc -O2 -DCPUS=1 crafty.c -o crafty.exe -lwinmm
+gcc -std=gnu17 -O2 -DCPUS=1 crafty.c -o crafty.exe -lwinmm
 
 # Recommended release: multi-threaded + Syzygy tablebases
-gcc -O2 -DCPUS=8 -DSYZYGY -mpopcnt crafty.c -o crafty.exe -lwinmm
+gcc -std=gnu17 -O2 -DCPUS=8 -DSYZYGY -mpopcnt crafty.c -o crafty.exe -lwinmm
 ```
 
 > `tbprobe.c` is already part of the unity build, so **do not** add it on the command line. Drop `-mpopcnt` if your CPU lacks a hardware popcount instruction.
@@ -179,7 +180,7 @@ Key source files: [`uci.c`](source/uci.c) (UCI adapter), [`main.c`](source/main.
 
 ## Version history
 
-This repository also serves as an archive of Crafty releases — historical versions are preserved as **git tags** (e.g. `v25.2`, `v24.1`, …) so you can check out and compare any version. `master` carries the current UCI edition (25.2.1).
+This repository also serves as an archive of Crafty releases — historical versions are preserved as **git tags** (e.g. `v25.2`, `v24.1`, …) so you can check out and compare any version. `master` carries the current UCI edition (25.6.1).
 
 ## Acknowledgements
 

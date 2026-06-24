@@ -35,13 +35,17 @@
 #   -DNODES        This enables the sn=x command.  Crafty will search until
 #                  exactly X nodes have been searched, then the search 
 #                  terminates as if time ran out.
+#   -DELO          Enables the "skill" command which allows you to arbitrarily
+#                  lower Crafty's playing skill so it does not seem so
+#   -DNO_INTRIN    use this if your processor does not have builtin intrinsic
+#                  instructions for bit operations (PopCnt and such).  This 
+#                  will cost some speed by not using the hardware instructions
+#                  for these operations that are much faster.
 #   -DPOSITIONS    Causes Crafty to emit FEN strings, one per book line, as
 #                  it creates a book.  I use this to create positions to use
 #                  for cluster testing.
 #   -DRCDIR        Path to the directory where we look for the .craftyrc or
 #                  crafty.rc (windows) file.
-#   -DSKILL        Enables the "skill" command which allows you to arbitrarily
-#                  lower Crafty's playing skill so it does not seem so
 #                  invincible to non-GM-level players.
 #   -DSYZYGY       This enables syzygy endgame tables (both WDL and DTC)
 #   -DTBDIR        Path to the directory where the endgame tablebase files
@@ -76,16 +80,16 @@ help:
 quick:
 	$(MAKE) target=UNIX \
 		CC=clang \
- 		opt='-DSYZYGY -DTEST -DTRACE -DCPUS=4' \
-		CFLAGS='-mpopcnt -Wall -Wno-array-bounds -pipe -O3' \
+ 		opt='-DSYZYGY -DTRACE -DCPUS=12' \
+		CFLAGS='-std=gnu17 -Wall -mpopcnt -Wno-array-bounds -pipe -O3' \
 		LDFLAGS='$(LDFLAGS) -lstdc++' \
 		crafty-make
 
 unix-gcc:
 	$(MAKE) -j target=UNIX \
 		CC=gcc \
-		opt='-DSYZYGY -DTEST -DCPUS=4' \
-		CFLAGS='-Wall -Wno-array-bounds -pipe -O3 -fprofile-use \
+		opt='-DSYZYGY -DCPUS=12' \
+		CFLAGS='-std=gnu17 -Wall -Wno-array-bounds -pipe -O3 -fprofile-use \
 		-mpopcnt -fprofile-correction -pthread' \
 		LDFLAGS='$(LDFLAGS) -fprofile-use -pthread -lstdc++' \
 		crafty-make
@@ -93,8 +97,8 @@ unix-gcc:
 unix-gcc-profile:
 	$(MAKE) -j target=UNIX \
 		CC=gcc \
-		opt='-DSYZYGY -DTEST -DCPUS=4' \
-		CFLAGS='-Wall -Wno-array-bounds -pipe -O3 -fprofile-arcs \
+		opt='-DSYZYGY -DCPUS=12' \
+		CFLAGS='-std=gnu17 -Wall -Wno-array-bounds -pipe -O3 -fprofile-arcs \
 		-mpopcnt -pthread' \
 		LDFLAGS='$(LDFLAGS) -fprofile-arcs -pthread -lstdc++ ' \
 		crafty-make
@@ -103,8 +107,8 @@ unix-clang:
 	@/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/llvm-profdata merge -output=crafty.profdata *.profraw
 	$(MAKE) -j target=UNIX \
 		CC=clang \
-		opt='-DSYZYGY -DTEST -DCPUS=4' \
-		CFLAGS='-Wall -Wno-array-bounds -pipe -O3 \
+		opt='-DELO -DSYZYGY -DCPUS=12' \
+		CFLAGS='-std=gnu17 -Wall -Wno-array-bounds -pipe -O3 \
 			-mpopcnt -fprofile-instr-use=crafty.profdata' \
 		LDFLAGS='$(LDFLAGS) -fprofile-use -lstdc++' \
 		crafty-make
@@ -112,8 +116,8 @@ unix-clang:
 unix-clang-profile:
 	$(MAKE) -j target=UNIX \
 		CC=clang \
-		opt='-DSYZYGY -DTEST -DCPUS=4' \
-		CFLAGS='-Wall -Wno-array-bounds -pipe -O3 \
+		opt='-DELO -DSYZYGY -DCPUS=12' \
+		CFLAGS='-std=gnu17 -Wall -Wno-array-bounds -pipe -O3 \
 			-mpopcnt -fprofile-instr-generate' \
 		LDFLAGS='$(LDFLAGS) -fprofile-instr-generate -lstdc++ ' \
 		crafty-make
@@ -121,7 +125,7 @@ unix-clang-profile:
 unix-icc:
 	$(MAKE) -j target=UNIX \
 		CC=icc \
-		opt='-DSYZYGY -DTEST -DCPUS=4' \
+		opt='-DSYZYGY -DCPUS=4' \
 		CFLAGS='-Wall -w -O2 -prof_use -prof_dir ./prof -fno-alias \
                         -mpopcnt -pthread' \
 		LDFLAGS='$(LDFLAGS) -pthread -lstdc++' \
@@ -130,7 +134,7 @@ unix-icc:
 unix-icc-profile:
 	$(MAKE) -j target=UNIX \
 		CC=icc \
-		opt='-DSYZYGY -DTEST -DCPUS=4' \
+		opt='-DSYZYGY -DCPUS=12' \
 		CFLAGS='-Wall -w -O2 -prof_gen -prof_dir ./prof -fno-alias \
                         -mpopcnt -pthread' \
 		LDFLAGS='$(LDFLAGS) -pthread -lstdc++ ' \
@@ -145,7 +149,7 @@ profile:
 	@mkdir prof
 	@touch *.c *.h
 	$(MAKE) -j unix-clang-profile
-	@echo "#!/bin/csh" > runprof
+	@echo "#!/bin/sh" > runprof
 	@echo "./crafty <<EOF" >>runprof
 	@echo "bench" >>runprof
 	@echo "mt=0" >>runprof
@@ -157,6 +161,26 @@ profile:
 	@touch *.c *.h
 	$(MAKE) -j unix-clang
 
+gcc-profile:
+	@rm -rf *.o
+	@rm -rf log.*
+	@rm -rf game.*
+	@rm -rf prof
+	@rm -rf *.gcda
+	@mkdir prof
+	@touch *.c *.h
+	$(MAKE) -j unix-gcc-profile
+	@echo "#!/bin/sh" > runprof
+	@echo "./crafty <<EOF" >>runprof
+	@echo "bench" >>runprof
+	@echo "mt=0" >>runprof
+	@echo "quit" >>runprof
+	@echo "EOF" >>runprof
+	@chmod +x runprof
+	@./runprof
+	@rm runprof
+	@touch *.c *.h
+	$(MAKE) -j unix-gcc
 
 #
 #  one of the two following definitions for "objects" should be used.  The
@@ -169,7 +193,7 @@ profile:
 
 #objects = main.o iterate.o time.o search.o quiesce.o evaluate.o thread.o \
         repeat.o hash.o next.o history.o movgen.o make.o unmake.o attacks.o \
-        see.o tbprobe.o boolean.o utility.o book.o drawn.o epd.o \
+        see.o boolean.o utility.o book.o drawn.o epd.o tbprobe.o \
         epdglue.o init.o input.o autotune.o interrupt.o option.o output.o \
         ponder.o resign.o root.o learn.o setboard.o test.o validate.o \
         annotate.o analyze.o evtest.o bench.o edit.o uci.o data.o
@@ -186,7 +210,7 @@ crafty-make:
 crafty.o: *.c *.h
 
 crafty:	$(objects)
-	$(CC) $(LDFLAGS) -g -o crafty $(objects) -lm  $(LIBS)
+	$(CC) $(LDFLAGS) -o crafty $(objects) -lm  $(LIBS)
 
 evaluate.o: evaluate.h
 

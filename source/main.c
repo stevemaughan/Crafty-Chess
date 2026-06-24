@@ -9,7 +9,7 @@
 #if defined(SYZYGY)
 #  include "tbprobe.h"
 #endif
-/* last modified 08/03/16 */
+/* last modified 11/29/19 */
 /*
  *******************************************************************************
  *                                                                             *
@@ -3511,7 +3511,7 @@
  *           futility is on by default and should not be removed.  All of the  *
  *           search() code has been cleaned up and streamlined a bit for more  *
  *           clarity when reading the code.  Nasty bug in EvaluatePawns() that *
- *           unfortunattely used the king squares to make a decision dealing   *
+ *           unfortunately used the king squares to make a decision dealing    *
  *           with outside passed pawns, but the hash signature for pawns does  *
  *           not include king position.  This code was deemed unnecessary and  *
  *           was summarily removed (not summarily executed, it has had that    *
@@ -4246,6 +4246,75 @@
  *           now notifies xboard/winboard to do this automatically so using    *
  *           those interfaces requires no changes to anything.                 *
  *                                                                             *
+ *    25.3   Two bugs fixed that were significant.  First, the older syzygy    *
+ *           probe code I was using had some sort of bug it seems.  I replaced *
+ *           it with the most recent and that solved tb probe failures dealing *
+ *           with an enpassant capture that was the only legal move.  Once     *
+ *           that was fixed, I then found that I had not factored in the       *
+ *           captured piece = pawn for EP captures (where I was calling the    *
+ *           probe code).  This caused a new bug once the tbprobe.c code was   *
+ *           updated.  That is now fixed also, leaving everything working as   *
+ *           it should, so far as I know through a lot of testing.             *
+ *                                                                             *
+ *    25.4   Change to the "display moves" command.  Crafty displays two       *
+ *           numbers (m/n) where it is currently searching move "m" out of "n" *
+ *           to let the operator know how a particular iterating is            *
+ *           progressing.  Only problem was, on a fail high, it would revert   *
+ *           back to "1/n" since the fail high move was moved to the top of    *
+ *           the move list.  It now counts the total moves searched and uses   *
+ *           that for the "m" value which gives a more correct idea of how     *
+ *           many moves have been searched, and how many are remaining.        *
+ *           New command "elo" replaced the old skill command.  It behaves in  *
+ *           similar way, in that it affects search speed and evaluation       *
+ *           randomness, but in a different way.  This version of Crafty       *
+ *           assumes that an Elo of 2600 is produced at a speed of 6M nodes    *
+ *           per second and zero evaluation randomness.  If you set the Elo    *
+ *           lower or higher, Crafty will (a) dynamically adjust the NPS (if   *
+ *           hardware is capable of upper ranges) to weaken the search, and it *
+ *           will start to ramp up randomness for any Elo below 2600.  The     *
+ *           current range is between 800 and 3600, where 3600 plays at max    *
+ *           possible NPS and zero randomness.  At Elo settings below 3600,    *
+ *           the search is slowed to get it down to 6M by the time Elo drops   *
+ *           to 2600.  Below that Elo, both NPS and randomness are adjusted.   *
+ *           In an attempt to neutralize the effect of faster hardware, the    *
+ *           NPS is dynamically adjusted while searching to keep it where it   *
+ *           should be (approximately) for the chosen Elo.  This may need some *
+ *           additional calibration, as testing below 2000 is pretty hard.  I  *
+ *           had to hack a couple of open-source programs (slowing them down   *
+ *           only) to produce opponents down in that range.  This will likely  *
+ *           be updated over time.                                             *
+ *                                                                             *
+ *    25.5   Three bug fixes.  First had to do with the logic to ignore some   *
+ *           fail lows at the root.  If a move fails high, then fails low, I   *
+ *           wanted to restore the previous PV and ignore that fail high /     *
+ *           fail low condition.  Unfortunately it could look at scores from   *
+ *           the PREVIOUS iteration and replace the fail low move with that    *
+ *           move, which was not what was intended.  Now it only replaces the  *
+ *           fail/high low with a move with a better score saved from the      *
+ *           CURRENT iteration.  Another bug with reductions where a reduced   *
+ *           search could fail high.  I then wanted to re-search the move      *
+ *           with the original depth to see if it still fails high.  However,  *
+ *           this search was done with depth - 1, NOT depth + extend -1, which *
+ *           could lead to minor search inconsistencies.  It was fixed to use  *
+ *           the correct original unreduced depth.  The final bug was in the   *
+ *           SMP code.  A bug where if we fail low on the very first move, the *
+ *           DTS code would still emit a split point for ply=1 thinking the    *
+ *           first move had been searched and YBW had been satisfied.  In this *
+ *           case it was wrong.  It was terminating the search and returning   *
+ *           to Iterate() to display (if requested) the fail low and then      *
+ *           adjust alpha downward.  But by emitting the split point, other    *
+ *           threads could start searching other moves at ply=1, which could   *
+ *           cause an unexpected race condition.  The fix was to only emit a   *
+ *           split point at ply=1 if the first move searched returned a score  *
+ *           within the alpha/beta window.                                     *
+ *                                                                             *
+ *    25.6   Minor bug in Resign() fixed.  This code will resign or offer      *
+ *           draws when appropriate.  The problem was the new SYZYGY endgame   *
+ *           tables subtly altered the scores and this code did not understand *
+ *           precisely what the scores meant, so it would offer draws when     *
+ *           winning.  Also another minor bug that would not offer a draw when *
+ *           in an EGTB drawn position with swindle mode off.                  *
+ *                                                                             *
  *******************************************************************************
  */
 int main(int argc, char **argv) {
@@ -4653,11 +4722,15 @@ int main(int argc, char **argv) {
           && Captured(ponder_move) == Captured(move)
           && Promote(ponder_move) == Promote(move)) {
         presult = 1;
-        if (!book_move)
-          predicted++;
       } else
         presult = 0;
     }
+    if (From(ponder_move) == From(move) && To(ponder_move) == To(move)
+        && Piece(ponder_move) == Piece(move)
+        && Captured(ponder_move) == Captured(move)
+        && Promote(ponder_move) == Promote(move) && !book_move &&
+        presult != 1)
+      predicted++;
     ponder_move = 0;
     thinking = 1;
     if (presult != 1) {

@@ -95,7 +95,7 @@ static void UCISetClock(int wtime, int btime, int winc, int binc,
  *  search is finished and no threads are running.
  */
 static void UCIWaitForStop(void) {
-  while (FOREVER) {
+  while (1) {
     if (Read(1, buffer) < 0) {           /* EOF: treat as quit */
       quit = 1;
       return;
@@ -480,7 +480,7 @@ void UCI(void) {
  */
   ponder = 0;
   UCISendId();
-  while (FOREVER) {
+  while (1) {
     if (quit)
       break;
     if (Read(1, buffer) < 0)
