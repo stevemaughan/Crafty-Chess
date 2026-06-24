@@ -315,7 +315,9 @@ typedef struct thread {
 #  define IN_WINDOW                    2
 #  define FAIL_HIGH                    3
 #if !defined(NO_INTRIN)
-#  if defined(UNIX)
+/* gcc/clang (incl. MinGW on Windows) use the portable builtins; the __popcnt64
+   / __lzcnt64 path below is MSVC-only. */
+#  if defined(UNIX) || defined(__GNUC__)
 #    define PopCnt(v) __builtin_popcountll(v)
 #    define LSB(v)    __builtin_ctzll(v)
 #    define MSB(v)    (63 - __builtin_clzll(v))

@@ -15,7 +15,7 @@
 #   x86-64     "basic"         baseline x86-64, no popcnt   (any 64-bit x86 CPU)
 set -eu
 
-VERSION="${VERSION:-25.2.1}"
+VERSION="${VERSION:-25.6.1}"
 ROOT="$(pwd)"
 SRC="$ROOT/source"
 DIST="$ROOT/dist"
@@ -24,7 +24,10 @@ DIST="$ROOT/dist"
 # a hot loop at x86-64-v3 emits 32-byte aligned moves and segfaults. Capping
 # vector width at 128 bits avoids that (Crafty has no 256-bit-beneficial loops,
 # so this costs nothing) while keeping popcnt/BMI2/lzcnt. Inert for v1/v2.
-COMMON="-O3 -pipe -Wno-array-bounds -mprefer-vector-width=128 -DSYZYGY -DCPUS=64"
+# -std=gnu17: Crafty 25.6's bundled Syzygy code does `typedef uint8_t bool;`,
+# which is illegal under gcc 14+/C23 defaults (bool became a keyword). Pin the
+# pre-C23 dialect so the upstream source compiles unmodified.
+COMMON="-std=gnu17 -O3 -pipe -Wno-array-bounds -mprefer-vector-width=128 -DSYZYGY -DCPUS=64"
 GCC="${GCC:-gcc}"
 
 mkdir -p "$DIST"
