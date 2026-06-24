@@ -2518,7 +2518,10 @@ static void WinNumaInit(void) {
   if (!fThreadsInitialized) {
     Lock(lock_smp);
     if (!fThreadsInitialized) {
-      printf("\nInitializing multiple threads.\n");
+      /* Only emit thread/NUMA diagnostics on an interactive console; a GUI
+         (UCI or xboard) pipes stdin and must not see this stray output. */
+      if (_isatty(fileno(stdin)))
+        printf("\nInitializing multiple threads.\n");
       fThreadsInitialized = TRUE;
       hModule = GetModuleHandle("kernel32");
       pGetNumaHighestNodeNumber =
@@ -2571,7 +2574,7 @@ static void WinNumaInit(void) {
             }
           }
         }
-      } else
+      } else if (_isatty(fileno(stdin)))
         printf("System is SMP, not NUMA.\n");
     }
     Unlock(lock_smp);
@@ -2590,8 +2593,9 @@ pthread_t NumaStartThread(void *func, void *args) {
     if (ulNumaNode > ulNumaNodes)
       ulNumaNode = 0;
     ullMask = ullProcessorMask[ulNumaNode];
-    printf("Starting thread on node %" PRId64 " CPU mask %ld\n", ulNumaNode,
-        ullMask);
+    if (_isatty(fileno(stdin)))
+      printf("Starting thread on node %" PRId64 " CPU mask %ld\n", ulNumaNode,
+          ullMask);
     SetThreadAffinityMask(GetCurrentThread(), (DWORD_PTR) ullMask);
     hThread = (HANDLE) _beginthreadex(0, 0, func, args, CREATE_SUSPENDED, 0);
     SetThreadAffinityMask(hThread, (DWORD_PTR) ullMask);
